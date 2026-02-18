@@ -121,17 +121,24 @@ Visit **http://localhost:5000** in your browser.
 
 ### Alternative: Docker Deployment
 
-```bash
-# Set your Groq API key
-export GROQ_API_KEY=your_groq_api_key
+1. **Ensure your `.env` file** has these values:
+   ```env
+   GROQ_API_KEY=your_groq_api_key
+   MYSQL_PASSWORD=northwind123
+   ```
 
-# Build and start with Docker Compose
-docker-compose up --build
-```
+2. **Place the Northwind SQL files** in the project root:
+   - `northwind.sql` (schema)
+   - `northwind-data.sql` (data)
 
-This starts the Flask app and a MySQL instance. Visit **http://localhost:5000**.
+3. **Build and start:**
+   ```bash
+   docker-compose up --build
+   ```
 
-> **Note:** When using Docker, you'll need to import the Northwind data into the containerized MySQL.
+This starts the Flask app + MySQL. The database auto-initializes with the Northwind schema on first run via Docker volume mounts.
+
+Visit **http://localhost:5000**.
 
 ## 📁 Project Structure
 
