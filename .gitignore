@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+venv/
+env/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# FAISS
+faiss_index/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
