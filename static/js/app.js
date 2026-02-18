@@ -402,6 +402,7 @@ function appendAssistantMessageDOM(data) {
     }
 
     // Results table
+    const chartId = 'chart_' + Date.now();
     if (data.results && data.results.rows && data.results.rows.length > 0) {
         const cols = data.results.columns;
         const rows = data.results.rows;
@@ -433,6 +434,20 @@ function appendAssistantMessageDOM(data) {
                     </table>
                 </div>
             </div>`;
+
+        // Chart container (will be populated after DOM insert)
+        const chartType = detectChartType(cols, rows);
+        if (chartType) {
+            html += `
+                <div class="chart-block">
+                    <div class="chart-header">
+                        <span>📊 Visualization</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="${chartId}"></canvas>
+                    </div>
+                </div>`;
+        }
     }
 
     // Error from SQL execution
@@ -440,14 +455,31 @@ function appendAssistantMessageDOM(data) {
         html += `
             <div class="error-text">
                 <span>⚠️ ${escapeHtml(data.error)}</span>
-                <button class="retry-btn" onclick="askQuestion('${escapeForTemplate(data.answer ? '' : 'Retry: ' + data.error)}')">Retry</button>
+                <button class="retry-btn" onclick="askQuestion('${escapeForTemplate(data.answer ? '' : 'Retry: ' + data.error)}')"> Retry</button>
             </div>`;
+    }
+
+    // Follow-up suggestions
+    if (data.follow_ups && data.follow_ups.length > 0) {
+        html += `<div class="follow-ups">`;
+        data.follow_ups.forEach(q => {
+            html += `<button class="follow-up-chip" onclick="askQuestion('${escapeForTemplate(q)}')">${escapeHtml(q)}</button>`;
+        });
+        html += `</div>`;
     }
 
     html += '</div>';
     div.innerHTML = html;
     chatArea.appendChild(div);
     scrollToBottom();
+
+    // Render chart AFTER DOM insertion
+    if (data.results && data.results.rows && data.results.rows.length > 0) {
+        const chartCanvas = document.getElementById(chartId);
+        if (chartCanvas) {
+            renderChart(chartCanvas, data.results.columns, data.results.rows);
+        }
+    }
 }
 
 function appendErrorDOM(error, originalQuestion) {
@@ -595,6 +627,118 @@ function highlightSQL(sql) {
     result = result.replace(/&#39;([^&#]*?)&#39;/g, '<span class="sql-string">\'$1\'</span>');
 
     return result;
+}
+
+
+// ── Chart.js Auto-Visualization ─────────────────────────────
+const CHART_COLORS = [
+    '#6C63FF', '#00D2FF', '#FF6B6B', '#FFD93D', '#6BCB77',
+    '#4D96FF', '#FF6F91', '#845EC2', '#FF9671', '#FFC75F',
+];
+
+function detectChartType(columns, rows) {
+    if (!rows || rows.length === 0 || rows.length > 50) return null;
+    if (columns.length < 2) return null;
+
+    // Find text and numeric columns
+    const textCols = [];
+    const numCols = [];
+
+    columns.forEach(col => {
+        const values = rows.map(r => r[col]).filter(v => v !== null && v !== undefined);
+        const numericCount = values.filter(v => !isNaN(Number(v)) && v !== '').length;
+        if (numericCount > values.length * 0.7) {
+            numCols.push(col);
+        } else {
+            textCols.push(col);
+        }
+    });
+
+    // Need at least 1 text label column and 1 numeric value column
+    if (textCols.length === 0 || numCols.length === 0) return null;
+
+    // Detect date-like label column → line chart
+    const firstTextCol = textCols[0];
+    const firstVal = String(rows[0][firstTextCol] || '');
+    const isDateLike = /\d{4}[-/]\d{1,2}|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|q[1-4])\b/i.test(firstVal)
+        || /^\d{4}$/.test(firstVal);
+
+    if (isDateLike) return 'line';
+    if (rows.length <= 8 && numCols.length === 1) return 'pie';
+    return 'bar';
+}
+
+function renderChart(canvas, columns, rows) {
+    const chartType = detectChartType(columns, rows);
+    if (!chartType) return;
+
+    const textCols = [];
+    const numCols = [];
+
+    columns.forEach(col => {
+        const values = rows.map(r => r[col]).filter(v => v !== null && v !== undefined);
+        const numericCount = values.filter(v => !isNaN(Number(v)) && v !== '').length;
+        if (numericCount > values.length * 0.7) numCols.push(col);
+        else textCols.push(col);
+    });
+
+    const labels = rows.map(r => String(r[textCols[0]] ?? ''));
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#a0a0b8' : '#555';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+
+    const datasets = numCols.map((col, i) => {
+        const data = rows.map(r => Number(r[col]) || 0);
+        return {
+            label: col.replace(/_/g, ' '),
+            data: data,
+            backgroundColor: chartType === 'pie'
+                ? CHART_COLORS.slice(0, data.length)
+                : CHART_COLORS[i % CHART_COLORS.length] + '99',
+            borderColor: chartType === 'pie'
+                ? '#1a1a2e'
+                : CHART_COLORS[i % CHART_COLORS.length],
+            borderWidth: chartType === 'pie' ? 2 : 2,
+            borderRadius: chartType === 'bar' ? 6 : 0,
+            tension: 0.4,
+            fill: chartType === 'line',
+        };
+    });
+
+    new Chart(canvas, {
+        type: chartType,
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: numCols.length > 1 || chartType === 'pie',
+                    labels: { color: textColor, font: { family: 'Inter', size: 11 } },
+                },
+                tooltip: {
+                    backgroundColor: isDark ? '#1e1e3a' : '#fff',
+                    titleColor: isDark ? '#e0e0f0' : '#333',
+                    bodyColor: isDark ? '#a0a0b8' : '#555',
+                    borderColor: isDark ? 'rgba(108,99,255,0.3)' : '#ddd',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 10,
+                },
+            },
+            scales: chartType !== 'pie' ? {
+                x: {
+                    ticks: { color: textColor, font: { size: 10 }, maxRotation: 45 },
+                    grid: { color: gridColor },
+                },
+                y: {
+                    ticks: { color: textColor, font: { size: 10 } },
+                    grid: { color: gridColor },
+                    beginAtZero: true,
+                },
+            } : {},
+        },
+    });
 }
 
 

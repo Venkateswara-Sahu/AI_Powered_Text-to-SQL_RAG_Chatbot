@@ -127,6 +127,14 @@ def chat():
         else:
             answer = f"I generated the SQL but it failed to execute: {result['error']}"
 
+        # Step 5: Generate follow-up suggestions
+        follow_ups = []
+        if result["success"] and answer:
+            try:
+                follow_ups = llm.generate_follow_ups(question, answer)
+            except Exception:
+                pass  # Non-critical, skip if it fails
+
         elapsed = round(time.time() - start_time, 2)
 
         # Update chat history
@@ -147,6 +155,7 @@ def chat():
                 "row_count": result.get("row_count", 0),
             } if result["success"] else None,
             "execution_time": elapsed,
+            "follow_ups": follow_ups,
             "error": result.get("error") if not result["success"] else None,
         })
 
