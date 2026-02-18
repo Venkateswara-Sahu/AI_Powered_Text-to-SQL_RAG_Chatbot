@@ -221,3 +221,46 @@ class SQLGenerator:
 
         except Exception as e:
             return f"I found the results but couldn't generate a summary: {str(e)}"
+
+    def generate_follow_ups(self, question: str, answer: str) -> list:
+        """
+        Generate 3 follow-up question suggestions based on the conversation.
+
+        Args:
+            question: User's original question
+            answer: The generated answer
+
+        Returns:
+            List of 3 follow-up question strings
+        """
+        prompt = (
+            f"The user asked about a Northwind database: \"{question}\"\n"
+            f"The answer was: \"{answer[:300]}\"\n\n"
+            "Suggest exactly 3 short, relevant follow-up questions the user might want to ask next. "
+            "Each question should be different in intent (e.g., drill-down, comparison, aggregation). "
+            "Return ONLY the 3 questions, one per line, no numbering or bullets."
+        )
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You suggest short follow-up database questions. Return exactly 3 questions, one per line, nothing else."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.7,
+                max_tokens=200,
+            )
+
+            lines = response.choices[0].message.content.strip().split("\n")
+            # Clean up: remove numbering, bullets, empty lines
+            follow_ups = []
+            for line in lines:
+                cleaned = line.strip().lstrip("0123456789.-) ").strip()
+                if cleaned and len(cleaned) > 5:
+                    follow_ups.append(cleaned)
+            return follow_ups[:3]
+
+        except Exception as e:
+            print(f"[LLM] Follow-up generation failed: {e}")
+            return []

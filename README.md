@@ -13,6 +13,8 @@ An AI-powered chatbot that converts natural language questions into SQL queries 
 
 ### User Experience
 - **ChatGPT-Style Conversations** — Full conversation history with new chat, switch, delete, and clear all
+- **📊 Auto Chart Visualizations** — Bar, pie, and line charts auto-generated from query results using Chart.js
+- **💡 AI Follow-up Suggestions** — LLM-generated follow-up questions appear as clickable chips after each answer
 - **Dark / Light Mode** — Toggle with persistence via localStorage
 - **SQL Syntax Highlighting** — Color-coded keywords, functions, strings, and numbers
 - **CSV Export** — Download any query result table as a `.csv` file
@@ -21,6 +23,7 @@ An AI-powered chatbot that converts natural language questions into SQL queries 
 - **Welcome Dashboard** — Live database stats (tables, rows, columns, model) + suggestion chips
 - **Toast Notifications** — Non-intrusive feedback for copy, download, and errors
 - **Responsive Design** — Works on desktop, tablet, and mobile
+- **🐳 Docker Ready** — Dockerfile + Docker Compose for one-command deployment
 
 ## 🛠️ Tech Stack
 
@@ -30,8 +33,9 @@ An AI-powered chatbot that converts natural language questions into SQL queries 
 | LLM | Groq API (Llama 3.3 70B Versatile) |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Vector Store | FAISS (Facebook AI Similarity Search) |
+| Charts | Chart.js |
 | Database | MySQL (Northwind) |
-| Frontend | HTML / CSS / JavaScript |
+| Container | Docker + Docker Compose |
 
 ## 🏗️ Architecture
 
@@ -114,6 +118,20 @@ python app.py
 ```
 
 Visit **http://localhost:5000** in your browser.
+
+### Alternative: Docker Deployment
+
+```bash
+# Set your Groq API key
+export GROQ_API_KEY=your_groq_api_key
+
+# Build and start with Docker Compose
+docker-compose up --build
+```
+
+This starts the Flask app and a MySQL instance. Visit **http://localhost:5000**.
+
+> **Note:** When using Docker, you'll need to import the Northwind data into the containerized MySQL.
 
 ## 📁 Project Structure
 
