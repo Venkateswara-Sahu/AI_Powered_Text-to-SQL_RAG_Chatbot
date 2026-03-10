@@ -6,7 +6,7 @@ from config import Config
 
 class SchemaRAG:
     """
-    RAG pipeline for Northwind database schema.
+    RAG pipeline for F1 database schema.
     Embeds table/column metadata using sentence-transformers and
     retrieves relevant schema context via FAISS (Facebook AI Similarity Search).
     """

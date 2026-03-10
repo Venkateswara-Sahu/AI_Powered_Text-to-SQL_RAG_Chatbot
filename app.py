@@ -1,12 +1,14 @@
-"""Flask application — NorthwindAI Text-to-SQL Chatbot."""
+"""Flask application — F1InsightAI Text-to-SQL Chatbot."""
 
 import time
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from config import Config
 from database.connector import DatabaseConnector
+from database.chat_store import ChatStore
 from rag.embeddings import SchemaRAG
-from llm.sql_generator import SQLGenerator
+from agent.tools import AgentTools
+from agent.agent import SQLAgent
 
 # ── Initialize Flask ──────────────────────────────────────────
 app = Flask(__name__)
@@ -15,20 +17,24 @@ CORS(app)
 
 # ── Initialize Components ────────────────────────────────────
 print("\n" + "=" * 50)
-print("  NorthwindAI — Starting up...")
+print("  F1InsightAI — Starting up...")
 print("=" * 50 + "\n")
 
 # Database
-db = DatabaseConnector()  
+db = DatabaseConnector()
+# Chat Store (server-side conversations)
+chat_store = ChatStore(db)
 # RAG
 rag = SchemaRAG()
-# LLM
-llm = SQLGenerator()
 
 # Index schema into RAG at startup
 print("[INIT] Building schema index...")
 schema_info = db.get_schema_info()
 rag.index_schema(schema_info)
+
+# Agent
+tools = AgentTools(db, rag)
+agent = SQLAgent(tools)
 print("[INIT] Ready!\n")
 
 
@@ -74,9 +80,70 @@ def get_stats():
     })
 
 
+# ── Conversation API (server-side storage) ───────────────────
+
+@app.route("/api/conversations", methods=["GET"])
+def list_conversations():
+    """Get all conversations."""
+    convos = chat_store.get_conversations()
+    return jsonify({"conversations": convos})
+
+
+@app.route("/api/conversations", methods=["POST"])
+def create_conversation():
+    """Create a new conversation."""
+    data = request.get_json()
+    title = data.get("title", "New Chat") if data else "New Chat"
+    conv_id = chat_store.create_conversation(title)
+    return jsonify({"id": conv_id, "title": title})
+
+
+@app.route("/api/conversations/<conv_id>", methods=["GET"])
+def get_conversation(conv_id):
+    """Get messages for a specific conversation."""
+    messages = chat_store.get_messages(conv_id)
+    return jsonify({"messages": messages})
+
+
+@app.route("/api/conversations/<conv_id>", methods=["DELETE"])
+def delete_conversation(conv_id):
+    """Delete a conversation."""
+    ok = chat_store.delete_conversation(conv_id)
+    return jsonify({"deleted": ok})
+
+
+@app.route("/api/conversations/clear", methods=["DELETE"])
+def clear_conversations():
+    """Delete all conversations."""
+    count = chat_store.clear_all()
+    return jsonify({"cleared": count})
+
+
+@app.route("/api/conversations/<conv_id>/rename", methods=["PATCH"])
+def rename_conversation_api(conv_id):
+    """Rename a conversation."""
+    data = request.get_json()
+    title = data.get("title", "").strip() if data else ""
+    if not title:
+        return jsonify({"error": "Title required"}), 400
+    ok = chat_store.rename_conversation(conv_id, title)
+    return jsonify({"renamed": ok, "title": title})
+
+
+@app.route("/api/conversations/<conv_id>/pin", methods=["PATCH"])
+def pin_conversation_api(conv_id):
+    """Pin or unpin a conversation."""
+    data = request.get_json()
+    pinned = data.get("pinned", True) if data else True
+    ok = chat_store.pin_conversation(conv_id, pinned)
+    return jsonify({"pinned": pinned, "ok": ok})
+
+
+# ── Chat Endpoint (Agentic) ─────────────────────────────────
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    """Main chat endpoint — process user question through RAG → SQL → Answer pipeline."""
+    """Main chat endpoint — uses LangGraph agent."""
     data = request.get_json()
     if not data or "message" not in data:
         return jsonify({"error": "No message provided"}), 400
@@ -85,90 +152,32 @@ def chat():
     if not question:
         return jsonify({"error": "Empty message"}), 400
 
-    # Initialize session chat history
-    if "chat_history" not in session:
-        session["chat_history"] = []
+    conversation_id = data.get("conversation_id")
 
-    start_time = time.time()
+    # Create conversation if needed
+    if not conversation_id:
+        title = question[:50] + "..." if len(question) > 50 else question
+        conversation_id = chat_store.create_conversation(title)
 
-    try:
-        # Step 1: Retrieve relevant schema context via RAG
-        schema_context = rag.retrieve(question)
+    # Get chat history for multi-turn context
+    history = chat_store.get_recent_history(conversation_id, limit=20)
 
-        # Step 2: Generate SQL using LLM
-        sql_result = llm.generate_sql(question, schema_context)
-        sql = sql_result.get("sql", "")
+    # Save user message
+    chat_store.add_message(conversation_id, "user", question)
 
-        if not sql or not sql_result.get("is_valid", False):
-            elapsed = round(time.time() - start_time, 2)
-            return jsonify({
-                "answer": sql_result.get("error") or "I couldn't generate a SQL query for that question. Could you rephrase it?",
-                "sql": sql if sql else None,
-                "results": None,
-                "execution_time": elapsed,
-                "error": sql_result.get("error")
-            })
+    # Run the agent
+    result = agent.run(question, chat_history=history)
 
-        # Step 3: Execute the SQL query
-        result = db.execute_query(sql)
+    # Save assistant response
+    chat_store.add_message(
+        conversation_id, "assistant", result.get("answer", ""),
+        data=result
+    )
 
-        if not result["success"]:
-            # Step 3b: Retry with error feedback
-            retry_result = llm.retry_sql(question, schema_context, sql, result["error"])
-            retry_sql = retry_result.get("sql", "")
-            if retry_sql and retry_result.get("is_valid", False):
-                result = db.execute_query(retry_sql)
-                if result["success"]:
-                    sql = retry_sql
+    # Add conversation_id to response
+    result["conversation_id"] = conversation_id
 
-        # Step 4: Generate natural language answer
-        if result["success"]:
-            answer = llm.generate_answer(question, sql, result)
-        else:
-            answer = f"I generated the SQL but it failed to execute: {result['error']}"
-
-        # Step 5: Generate follow-up suggestions
-        follow_ups = []
-        if result["success"] and answer:
-            try:
-                follow_ups = llm.generate_follow_ups(question, answer)
-            except Exception:
-                pass  # Non-critical, skip if it fails
-
-        elapsed = round(time.time() - start_time, 2)
-
-        # Update chat history
-        session["chat_history"] = session.get("chat_history", [])
-        session["chat_history"].append({"role": "user", "content": question})
-        session["chat_history"].append({"role": "assistant", "content": answer})
-        # Keep history manageable
-        if len(session["chat_history"]) > 20:
-            session["chat_history"] = session["chat_history"][-20:]
-        session.modified = True
-
-        return jsonify({
-            "answer": answer,
-            "sql": sql,
-            "results": {
-                "columns": result.get("columns", []),
-                "rows": result.get("rows", []),
-                "row_count": result.get("row_count", 0),
-            } if result["success"] else None,
-            "execution_time": elapsed,
-            "follow_ups": follow_ups,
-            "error": result.get("error") if not result["success"] else None,
-        })
-
-    except Exception as e:
-        elapsed = round(time.time() - start_time, 2)
-        print(f"[ERROR] Chat pipeline failed: {e}")
-        return jsonify({
-            "answer": None,
-            "sql": None,
-            "results": None,
-            "execution_time": elapsed,
-            "error": f"An unexpected error occurred: {str(e)}"
-        }), 500
+    return jsonify(result)
 
 
 if __name__ == "__main__":

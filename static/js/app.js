@@ -1,6 +1,6 @@
 /**
- * NorthwindAI — Text-to-SQL RAG Chatbot
- * ChatGPT-style conversation management with full history
+ * F1InsightAI — Formula 1 Data Chatbot
+ * Server-side conversations + Agent step display
  */
 
 // ── DOM Elements ────────────────────────────────────────────
@@ -17,7 +17,7 @@ const toastContainer = document.getElementById('toastContainer');
 const sidebar = document.getElementById('sidebar');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
 const sidebarToggle = document.getElementById('sidebarToggle');
-const sidebarClose = document.getElementById('sidebarClose');
+const sidebarCollapse = document.getElementById('sidebarCollapse');
 const chatList = document.getElementById('chatList');
 const newChatBtn = document.getElementById('newChatBtn');
 const clearAllChats = document.getElementById('clearAllChats');
@@ -31,6 +31,7 @@ const statRows = document.getElementById('statRows');
 const statColumns = document.getElementById('statColumns');
 const statModel = document.getElementById('statModel');
 
+
 // Store the initial welcome card HTML so we can restore it
 const welcomeCardHTML = welcomeCard ? welcomeCard.outerHTML : '';
 
@@ -38,8 +39,8 @@ const welcomeCardHTML = welcomeCard ? welcomeCard.outerHTML : '';
 // ── State ───────────────────────────────────────────────────
 let isLoading = false;
 let currentChatId = null;
-// conversations: { id, title, createdAt, messages: [{role, content, data?}] }
-let conversations = JSON.parse(localStorage.getItem('nw_conversations') || '[]');
+let conversations = []; // Loaded from server
+let sidebarCollapsed = false;
 
 
 // ── Initialize ──────────────────────────────────────────────
@@ -47,9 +48,14 @@ document.addEventListener('DOMContentLoaded', () => {
     checkHealth();
     loadStats();
     loadTheme();
-    renderChatList();
+    loadConversations();
     autoResizeTextarea();
-    // Always start fresh — users can load past chats from the sidebar
+
+    // Restore collapsed state from localStorage
+    const savedCollapsed = localStorage.getItem('f1_sidebar_collapsed');
+    if (savedCollapsed === 'true' && window.innerWidth > 768) {
+        collapseSidebar();
+    }
 });
 
 
@@ -102,99 +108,206 @@ themeToggle.addEventListener('click', () => {
 });
 
 
-// ── Sidebar ─────────────────────────────────────────────────
-sidebarToggle.addEventListener('click', () => {
-    sidebar.classList.add('open');
-    sidebarOverlay.classList.add('open');
+// ── Sidebar Collapse / Expand ───────────────────────────────
+function collapseSidebar() {
+    sidebarCollapsed = true;
+    sidebar.classList.add('collapsed');
+    document.querySelector('.app-container').classList.add('sidebar-collapsed');
+    sidebarToggle.style.display = 'flex';
+    localStorage.setItem('f1_sidebar_collapsed', 'true');
+}
+
+function expandSidebar() {
+    sidebarCollapsed = false;
+    sidebar.classList.remove('collapsed');
+    document.querySelector('.app-container').classList.remove('sidebar-collapsed');
+    if (window.innerWidth > 768) {
+        sidebarToggle.style.display = 'none';
+    }
+    localStorage.setItem('f1_sidebar_collapsed', 'false');
+}
+
+// Collapse button inside sidebar
+sidebarCollapse.addEventListener('click', () => {
+    if (window.innerWidth <= 768) {
+        // Mobile: close overlay
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('open');
+    } else {
+        // Desktop: collapse
+        collapseSidebar();
+    }
 });
 
-sidebarClose.addEventListener('click', closeSidebar);
-sidebarOverlay.addEventListener('click', closeSidebar);
+// Toggle button in header (expands collapsed sidebar)
+sidebarToggle.addEventListener('click', () => {
+    if (window.innerWidth <= 768) {
+        sidebar.classList.add('open');
+        sidebarOverlay.classList.add('open');
+    } else {
+        expandSidebar();
+    }
+});
 
-function closeSidebar() {
+sidebarOverlay.addEventListener('click', () => {
     sidebar.classList.remove('open');
     sidebarOverlay.classList.remove('open');
-}
+});
 
 
-// ── Conversation Management (ChatGPT-style) ────────────────
+// ── Conversation Management (Server-Side) ───────────────────
 
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-}
-
-function saveConversations() {
-    localStorage.setItem('nw_conversations', JSON.stringify(conversations));
+async function loadConversations() {
+    try {
+        const res = await fetch('/api/conversations');
+        const data = await res.json();
+        conversations = data.conversations || [];
+        renderChatList();
+    } catch {
+        conversations = [];
+        renderChatList();
+    }
 }
 
 // Create a new chat
 newChatBtn.addEventListener('click', () => {
     startNewChat();
-    closeSidebar();
+    if (window.innerWidth <= 768) {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('open');
+    }
 });
 
 function startNewChat() {
     currentChatId = null;
-    // Clear chat area and show welcome card
     chatArea.innerHTML = welcomeCardHTML;
     renderChatList();
+    loadStats();  // Re-populate stat cards
     userInput.focus();
 }
 
 // Clear all chats
-clearAllChats.addEventListener('click', () => {
+clearAllChats.addEventListener('click', async () => {
     if (conversations.length === 0) return;
-    conversations = [];
-    saveConversations();
-    startNewChat();
-    showToast('All chats cleared', 'info');
+    try {
+        await fetch('/api/conversations/clear', { method: 'DELETE' });
+        conversations = [];
+        startNewChat();
+        showToast('All chats cleared', 'info');
+    } catch {
+        showToast('Failed to clear chats', 'error');
+    }
 });
 
 // Load a specific conversation
-function loadChat(chatId) {
+async function loadChat(chatId) {
+    currentChatId = chatId;
+    chatArea.innerHTML = '';
+
+    try {
+        const res = await fetch(`/api/conversations/${chatId}`);
+        const data = await res.json();
+        const messages = data.messages || [];
+
+        messages.forEach(msg => {
+            if (msg.role === 'user') {
+                appendMessageDOM('user', msg.content);
+            } else if (msg.role === 'assistant') {
+                if (msg.data) {
+                    appendAssistantMessageDOM(msg.data);
+                } else {
+                    appendMessageDOM('assistant', msg.content);
+                }
+            } else if (msg.role === 'error') {
+                appendErrorDOM(msg.content, '');
+            }
+        });
+
+        renderChatList();
+        scrollToBottom();
+    } catch {
+        showToast('Failed to load chat', 'error');
+    }
+}
+
+async function deleteChat(chatId, event) {
+    event.stopPropagation();
+    try {
+        await fetch(`/api/conversations/${chatId}`, { method: 'DELETE' });
+        conversations = conversations.filter(c => c.id !== chatId);
+        startNewChat();  // Always go to a fresh new chat
+        showToast('Chat deleted', 'info');
+    } catch {
+        showToast('Failed to delete chat', 'error');
+    }
+}
+
+async function renameChat(chatId, event) {
+    event.stopPropagation();
     const chat = conversations.find(c => c.id === chatId);
     if (!chat) return;
 
-    currentChatId = chatId;
+    const item = event.target.closest('.chat-item');
+    const titleEl = item.querySelector('.chat-item-title');
+    const oldTitle = chat.title;
 
-    // Clear chat area (remove welcome card)
-    chatArea.innerHTML = '';
+    // Replace title with input
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'chat-rename-input';
+    input.value = oldTitle;
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
 
-    // Re-render all messages from this conversation
-    chat.messages.forEach(msg => {
-        if (msg.role === 'user') {
-            appendMessageDOM('user', msg.content);
-        } else if (msg.role === 'assistant') {
-            if (msg.data) {
-                appendAssistantMessageDOM(msg.data);
-            } else {
-                appendMessageDOM('assistant', msg.content);
+    const save = async () => {
+        const newTitle = input.value.trim();
+        if (newTitle && newTitle !== oldTitle) {
+            try {
+                await fetch(`/api/conversations/${chatId}/rename`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: newTitle })
+                });
+                chat.title = newTitle;
+                showToast('Chat renamed', 'info');
+            } catch {
+                showToast('Rename failed', 'error');
             }
-        } else if (msg.role === 'error') {
-            appendErrorDOM(msg.content, msg.originalQuestion || '');
         }
-    });
+        renderChatList();
+    };
 
-    renderChatList();
-    scrollToBottom();
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { input.value = oldTitle; input.blur(); }
+    });
 }
 
-// Delete a chat
-function deleteChat(chatId, event) {
+async function pinChat(chatId, event) {
     event.stopPropagation();
-    conversations = conversations.filter(c => c.id !== chatId);
-    saveConversations();
+    const chat = conversations.find(c => c.id === chatId);
+    if (!chat) return;
 
-    if (currentChatId === chatId) {
-        if (conversations.length > 0) {
-            loadChat(conversations[0].id);
-        } else {
-            startNewChat();
-        }
-    } else {
+    const newPinned = !chat.pinned;
+    try {
+        await fetch(`/api/conversations/${chatId}/pin`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pinned: newPinned })
+        });
+        chat.pinned = newPinned;
+        // Re-sort: pinned first, then by updated_at
+        conversations.sort((a, b) => {
+            if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
+            return new Date(b.updated_at) - new Date(a.updated_at);
+        });
         renderChatList();
+        showToast(newPinned ? 'Chat pinned' : 'Chat unpinned', 'info');
+    } catch {
+        showToast('Pin failed', 'error');
     }
-    showToast('Chat deleted', 'info');
 }
 
 // Render the conversation list in sidebar
@@ -210,37 +323,65 @@ function renderChatList() {
         return;
     }
 
-    // Group by date
     const today = new Date().toDateString();
     const yesterday = new Date(Date.now() - 86400000).toDateString();
 
     let html = '';
     let lastDateLabel = '';
+    let hasPinned = conversations.some(c => c.pinned);
+    let pinnedSectionDone = false;
 
     conversations.forEach(chat => {
-        const chatDate = new Date(chat.createdAt).toDateString();
-        let dateLabel;
-        if (chatDate === today) dateLabel = 'Today';
-        else if (chatDate === yesterday) dateLabel = 'Yesterday';
-        else dateLabel = new Date(chat.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        // Add PINNED section header
+        if (chat.pinned && !pinnedSectionDone && lastDateLabel === '') {
+            html += `<div class="sidebar-date-label">📌 Pinned</div>`;
+        }
+        // Transition from pinned to unpinned
+        if (!chat.pinned && !pinnedSectionDone && hasPinned) {
+            pinnedSectionDone = true;
+            lastDateLabel = ''; // Reset so date labels show
+        }
 
-        if (dateLabel !== lastDateLabel) {
-            html += `<div class="sidebar-date-label">${dateLabel}</div>`;
-            lastDateLabel = dateLabel;
+        if (!chat.pinned) {
+            const chatDate = new Date(chat.created_at || chat.createdAt).toDateString();
+            let dateLabel;
+            if (chatDate === today) dateLabel = 'Today';
+            else if (chatDate === yesterday) dateLabel = 'Yesterday';
+            else dateLabel = new Date(chat.created_at || chat.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            if (dateLabel !== lastDateLabel) {
+                html += `<div class="sidebar-date-label">${dateLabel}</div>`;
+                lastDateLabel = dateLabel;
+            }
         }
 
         const isActive = chat.id === currentChatId;
+        const pinIcon = chat.pinned ? '📌 ' : '';
+        const pinTitle = chat.pinned ? 'Unpin' : 'Pin';
+        const pinSvg = chat.pinned
+            ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M16 2L7.5 10.5 2 22l11.5-5.5L22 8 16 2z"/></svg>'
+            : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 2L7.5 10.5 2 22l11.5-5.5L22 8 16 2z"/></svg>';
+
         html += `
-            <div class="chat-item${isActive ? ' active' : ''}" onclick="loadChat('${chat.id}'); closeSidebar();">
+            <div class="chat-item${isActive ? ' active' : ''}${chat.pinned ? ' pinned' : ''}" onclick="loadChat('${chat.id}')">
                 <div class="chat-item-content">
-                    <div class="chat-item-title">${escapeHtml(chat.title)}</div>
-                    <div class="chat-item-time">${new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div class="chat-item-title">${pinIcon}${escapeHtml(chat.title)}</div>
                 </div>
-                <button class="chat-item-delete" onclick="deleteChat('${chat.id}', event)" title="Delete">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                </button>
+                <div class="chat-item-actions">
+                    <button class="chat-item-action" onclick="pinChat('${chat.id}', event)" title="${pinTitle}">
+                        ${pinSvg}
+                    </button>
+                    <button class="chat-item-action" onclick="renameChat('${chat.id}', event)" title="Rename">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </button>
+                    <button class="chat-item-action delete" onclick="deleteChat('${chat.id}', event)" title="Delete">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                </div>
             </div>`;
     });
 
@@ -285,27 +426,12 @@ async function sendMessage(message) {
     isLoading = true;
     sendBtn.disabled = true;
 
-    // If no active chat, create a new one
-    if (!currentChatId) {
-        const newChat = {
-            id: generateId(),
-            title: message.length > 50 ? message.substring(0, 50) + '...' : message,
-            createdAt: new Date().toISOString(),
-            messages: [],
-        };
-        conversations.unshift(newChat);
-        currentChatId = newChat.id;
-        saveConversations();
-        renderChatList();
-    }
-
     // Hide welcome card if visible
     const wc = document.getElementById('welcomeCard');
     if (wc) wc.remove();
 
-    // Add user message to DOM and conversation
+    // Add user message to DOM
     appendMessageDOM('user', message);
-    addMessageToChat(currentChatId, { role: 'user', content: message });
 
     userInput.value = '';
     userInput.style.height = 'auto';
@@ -317,24 +443,31 @@ async function sendMessage(message) {
         const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message }),
+            body: JSON.stringify({
+                message,
+                conversation_id: currentChatId,
+            }),
         });
 
         const data = await res.json();
         removeTyping(typingEl);
 
+        // Update current chat ID (server may have created a new one)
+        if (data.conversation_id) {
+            currentChatId = data.conversation_id;
+        }
+
+        // Refresh conversation list from server
+        await loadConversations();
+
         if (data.error && !data.answer) {
             appendErrorDOM(data.error, message);
-            addMessageToChat(currentChatId, { role: 'error', content: data.error, originalQuestion: message });
         } else {
             appendAssistantMessageDOM(data);
-            addMessageToChat(currentChatId, { role: 'assistant', content: data.answer || '', data: data });
         }
     } catch (err) {
         removeTyping(typingEl);
-        const errMsg = 'Failed to connect to the server. Please check if the app is running.';
-        appendErrorDOM(errMsg, message);
-        addMessageToChat(currentChatId, { role: 'error', content: errMsg, originalQuestion: message });
+        appendErrorDOM('Failed to connect to the server. Please check if the app is running.', message);
     }
 
     isLoading = false;
@@ -342,16 +475,8 @@ async function sendMessage(message) {
     userInput.focus();
 }
 
-function addMessageToChat(chatId, message) {
-    const chat = conversations.find(c => c.id === chatId);
-    if (chat) {
-        chat.messages.push(message);
-        saveConversations();
-    }
-}
 
-
-// ── DOM Rendering (pure display, no state changes) ──────────
+// ── DOM Rendering ───────────────────────────────────────────
 function appendMessageDOM(role, text) {
     const div = document.createElement('div');
     div.className = `message ${role}`;
@@ -386,6 +511,29 @@ function appendAssistantMessageDOM(data) {
             </div>`;
     }
 
+    // Agent steps (reasoning trace)
+    if (data.agent_steps && data.agent_steps.length > 0) {
+        html += `
+            <details class="agent-steps">
+                <summary>🧠 Agent Reasoning (${data.agent_steps.length} steps)</summary>
+                <div class="agent-steps-list">`;
+        data.agent_steps.forEach((step, i) => {
+            const icon = step.result && step.result.startsWith('✅') ? '✅' :
+                step.result && step.result.startsWith('❌') ? '❌' :
+                    step.result && step.result.startsWith('⚠️') ? '⚠️' : '🔧';
+            html += `
+                    <div class="agent-step">
+                        <span class="agent-step-num">${i + 1}</span>
+                        <div class="agent-step-content">
+                            <div class="agent-step-node">${escapeHtml(step.node || '')}</div>
+                            <div class="agent-step-action">${escapeHtml(step.action || '')}</div>
+                            <div class="agent-step-result">${escapeHtml(step.result || '')}</div>
+                        </div>
+                    </div>`;
+        });
+        html += `</div></details>`;
+    }
+
     // SQL block
     if (data.sql) {
         html += `
@@ -401,7 +549,7 @@ function appendAssistantMessageDOM(data) {
             </div>`;
     }
 
-    // Results table
+    // Results table + chart
     const chartId = 'chart_' + Date.now();
     if (data.results && data.results.rows && data.results.rows.length > 0) {
         const cols = data.results.columns;
@@ -435,7 +583,7 @@ function appendAssistantMessageDOM(data) {
                 </div>
             </div>`;
 
-        // Chart container (will be populated after DOM insert)
+        // Chart container
         const chartType = detectChartType(cols, rows);
         if (chartType) {
             html += `
@@ -455,7 +603,7 @@ function appendAssistantMessageDOM(data) {
         html += `
             <div class="error-text">
                 <span>⚠️ ${escapeHtml(data.error)}</span>
-                <button class="retry-btn" onclick="askQuestion('${escapeForTemplate(data.answer ? '' : 'Retry: ' + data.error)}')"> Retry</button>
+                <button class="retry-btn" onclick="askQuestion('${escapeForTemplate(data.answer ? '' : 'Retry: ' + data.error)}')"> Retry</button>
             </div>`;
     }
 
@@ -542,7 +690,7 @@ function downloadCSV(tableId) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `northwind_results_${Date.now()}.csv`;
+    link.download = `f1_results_${Date.now()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
     showToast('CSV downloaded!', 'success');
@@ -567,7 +715,7 @@ function downloadSQL(sql) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `northwind_query_${Date.now()}.sql`;
+    link.download = `f1_query_${Date.now()}.sql`;
     link.click();
     URL.revokeObjectURL(url);
     showToast('SQL file downloaded!', 'success');
@@ -607,23 +755,18 @@ function highlightSQL(sql) {
 
     let result = escaped;
 
-    // Highlight keywords
     keywords.forEach(kw => {
         const regex = new RegExp(`\\b(${kw})\\b`, 'gi');
         result = result.replace(regex, '<span class="sql-keyword">$1</span>');
     });
 
-    // Highlight functions
     const functions = ['COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'CONCAT', 'COALESCE', 'IFNULL', 'ROUND', 'CAST', 'DATE', 'YEAR', 'MONTH'];
     functions.forEach(fn => {
         const regex = new RegExp(`\\b(${fn})\\s*\\(`, 'gi');
         result = result.replace(regex, '<span class="sql-function">$1</span>(');
     });
 
-    // Highlight numbers
     result = result.replace(/\b(\d+\.?\d*)\b/g, '<span class="sql-number">$1</span>');
-
-    // Highlight strings
     result = result.replace(/&#39;([^&#]*?)&#39;/g, '<span class="sql-string">\'$1\'</span>');
 
     return result;
@@ -640,7 +783,6 @@ function detectChartType(columns, rows) {
     if (!rows || rows.length === 0 || rows.length > 50) return null;
     if (columns.length < 2) return null;
 
-    // Find text and numeric columns
     const textCols = [];
     const numCols = [];
 
@@ -654,10 +796,8 @@ function detectChartType(columns, rows) {
         }
     });
 
-    // Need at least 1 text label column and 1 numeric value column
     if (textCols.length === 0 || numCols.length === 0) return null;
 
-    // Detect date-like label column → line chart
     const firstTextCol = textCols[0];
     const firstVal = String(rows[0][firstTextCol] || '');
     const isDateLike = /\d{4}[-/]\d{1,2}|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|q[1-4])\b/i.test(firstVal)
@@ -698,7 +838,7 @@ function renderChart(canvas, columns, rows) {
             borderColor: chartType === 'pie'
                 ? '#1a1a2e'
                 : CHART_COLORS[i % CHART_COLORS.length],
-            borderWidth: chartType === 'pie' ? 2 : 2,
+            borderWidth: 2,
             borderRadius: chartType === 'bar' ? 6 : 0,
             tension: 0.4,
             fill: chartType === 'line',

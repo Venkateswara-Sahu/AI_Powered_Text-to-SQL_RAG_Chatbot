@@ -7,12 +7,13 @@ load_dotenv()
 class Config:
     """Centralized configuration loaded from .env file."""
 
-    # MySQL
+    # MySQL / TiDB Cloud
     MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
     MYSQL_PORT = int(os.getenv("MYSQL_PORT", 3306))
     MYSQL_USER = os.getenv("MYSQL_USER", "root")
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
-    MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "northwind")
+    MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "f1db")
+    MYSQL_SSL = os.getenv("MYSQL_SSL", "false").lower() == "true"
 
     # Groq
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")

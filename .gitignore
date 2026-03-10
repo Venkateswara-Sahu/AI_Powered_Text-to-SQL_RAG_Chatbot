@@ -25,3 +25,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Data files (large, not needed in repo)
+*.zip
+*.sql
+f1-csv/
+f1db-dump/
