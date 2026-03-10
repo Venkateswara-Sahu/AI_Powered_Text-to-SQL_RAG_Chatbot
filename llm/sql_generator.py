@@ -234,7 +234,7 @@ class SQLGenerator:
             List of 3 follow-up question strings
         """
         prompt = (
-            f"The user asked about a Northwind database: \"{question}\"\n"
+            f"The user asked about a Formula 1 database: \"{question}\"\n"
             f"The answer was: \"{answer[:300]}\"\n\n"
             "Suggest exactly 3 short, relevant follow-up questions the user might want to ask next. "
             "Each question should be different in intent (e.g., drill-down, comparison, aggregation). "

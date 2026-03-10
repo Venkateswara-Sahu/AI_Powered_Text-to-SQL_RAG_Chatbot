@@ -4,12 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="NorthwindAI — AI-powered Text-to-SQL RAG chatbot for the Northwind database">
-    <title>NorthwindAI — Text-to-SQL Chatbot</title>
+    <meta name="description" content="F1InsightAI — AI-powered Text-to-SQL chatbot for Formula 1 race data (1950–2024)">
+    <title>F1InsightAI — Formula 1 Data Chatbot</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
@@ -20,18 +20,33 @@
     <!-- Chat History Sidebar (ChatGPT-style) -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="2" width="20" height="20" rx="4" stroke="url(#sidebarLogoGrad)" stroke-width="2" />
+                    <path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7zM13 13h4v4h-4z" fill="url(#sidebarLogoGrad)"
+                        opacity="0.7" />
+                    <path d="M7 7h4v4H7zM13 13h4v4h-4z" fill="url(#sidebarLogoGrad)" />
+                    <defs>
+                        <linearGradient id="sidebarLogoGrad" x1="0" y1="0" x2="24" y2="24">
+                            <stop offset="0%" stop-color="#E10600" />
+                            <stop offset="100%" stop-color="#FF6B35" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <button class="sidebar-collapse" id="sidebarCollapse" title="Collapse sidebar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6" />
+                </svg>
+            </button>
+        </div>
+        <div class="sidebar-new-chat">
             <button class="new-chat-btn" id="newChatBtn" title="New Chat">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
                 New Chat
-            </button>
-            <button class="sidebar-close" id="sidebarClose" title="Close">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
             </button>
         </div>
         <div class="sidebar-content" id="chatList">
@@ -53,28 +68,27 @@
         <!-- Header -->
         <header class="app-header">
             <div class="header-left">
-                <button class="icon-btn" id="sidebarToggle" title="Chat History">
+                <button class="icon-btn" id="sidebarToggle" title="Show sidebar">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="3" y1="6" x2="21" y2="6" />
-                        <line x1="3" y1="12" x2="21" y2="12" />
-                        <line x1="3" y1="18" x2="21" y2="18" />
+                        <polyline points="9 6 15 12 9 18" />
                     </svg>
                 </button>
                 <div class="logo">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="11" stroke="url(#logoGrad)" stroke-width="2" />
-                        <path d="M8 12l2.5 2.5L16 9" stroke="url(#logoGrad)" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round" />
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+                        <rect x="2" y="2" width="20" height="20" rx="4" stroke="url(#logoGrad)" stroke-width="2" />
+                        <path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7zM13 13h4v4h-4z" fill="url(#logoGrad)"
+                            opacity="0.7" />
+                        <path d="M7 7h4v4H7zM13 13h4v4h-4z" fill="url(#logoGrad)" />
                         <defs>
                             <linearGradient id="logoGrad" x1="0" y1="0" x2="24" y2="24">
-                                <stop offset="0%" stop-color="#6C63FF" />
-                                <stop offset="100%" stop-color="#00D2FF" />
+                                <stop offset="0%" stop-color="#E10600" />
+                                <stop offset="100%" stop-color="#FF6B35" />
                             </linearGradient>
                         </defs>
                     </svg>
-                    <h1>Northwind<span class="accent">AI</span></h1>
+                    <h1>F1Insight<span class="accent">AI</span></h1>
                 </div>
-                <span class="tagline">Text-to-SQL RAG Chatbot</span>
+                <span class="tagline">Formula 1 Data Chatbot 🏎️</span>
             </div>
             <div class="header-right">
                 <button class="icon-btn theme-toggle" id="themeToggle" title="Toggle theme">
@@ -109,18 +123,21 @@
                 <div class="welcome-icon">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="url(#welcomeGrad)"
                         stroke-width="1.5">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        <rect x="2" y="2" width="20" height="20" rx="4" />
+                        <path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7zM13 13h4v4h-4z" fill="url(#welcomeGrad)"
+                            opacity="0.3" />
+                        <path d="M7 7h4v4H7zM13 13h4v4h-4z" fill="url(#welcomeGrad)" opacity="0.6" />
                         <defs>
                             <linearGradient id="welcomeGrad" x1="0" y1="0" x2="24" y2="24">
-                                <stop offset="0%" stop-color="#6C63FF" />
-                                <stop offset="100%" stop-color="#00D2FF" />
+                                <stop offset="0%" stop-color="#E10600" />
+                                <stop offset="100%" stop-color="#FF6B35" />
                             </linearGradient>
                         </defs>
                     </svg>
                 </div>
-                <h2>Welcome to NorthwindAI</h2>
-                <p>Ask questions about the Northwind database in plain English. I'll generate SQL, run it, and explain
-                    the results.</p>
+                <h2>Welcome to F1InsightAI 🏎️</h2>
+                <p>Ask me anything about Formula 1 — drivers, races, teams, circuits, lap times, pit stops, and 75 years
+                    of racing history. I'll query the database and explain the results.</p>
 
                 <!-- Database Stats -->
                 <div class="db-stats" id="dbStats">
@@ -144,30 +161,30 @@
 
                 <div class="suggestion-groups">
                     <div class="suggestion-group">
-                        <span class="group-label">📊 Analytics</span>
+                        <span class="group-label">🏆 Champions</span>
                         <div class="suggestions">
-                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">What are the top 5
-                                products by revenue?</button>
-                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">Show monthly sales
-                                trends</button>
+                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">Who has the most
+                                race wins in F1 history?</button>
+                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">Compare Hamilton and
+                                Verstappen career stats</button>
                         </div>
                     </div>
                     <div class="suggestion-group">
-                        <span class="group-label">👥 Customers</span>
+                        <span class="group-label">🏎️ Races</span>
                         <div class="suggestions">
-                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">Top customers by
-                                total spending</button>
-                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">How many customers
-                                are in each country?</button>
+                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">Show the 2023 race
+                                calendar with circuits</button>
+                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">Which circuit has
+                                hosted the most races?</button>
                         </div>
                     </div>
                     <div class="suggestion-group">
-                        <span class="group-label">📦 Products</span>
+                        <span class="group-label">⏱️ Performance</span>
                         <div class="suggestions">
-                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">Which product
-                                categories have the most items?</button>
-                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">Show all
-                                discontinued products</button>
+                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">What is the average
+                                pit stop time by team?</button>
+                            <button class="suggestion-chip" onclick="askQuestion(this.textContent)">Top 5 constructors
+                                by total points</button>
                         </div>
                     </div>
                 </div>
@@ -177,7 +194,7 @@
         <!-- Input Area -->
         <footer class="input-area">
             <form class="input-container" id="chatForm">
-                <textarea id="userInput" placeholder="Ask a question about the Northwind database..." rows="1"
+                <textarea id="userInput" placeholder="Ask about F1 — drivers, races, teams, lap times..." rows="1"
                     autofocus></textarea>
                 <button type="submit" class="send-btn" id="sendBtn" title="Send">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

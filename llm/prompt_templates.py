@@ -1,67 +1,129 @@
-"""Prompt templates for Text-to-SQL generation."""
+"""Prompt templates for Text-to-SQL generation — F1 Database (Ergast schema)."""
 
-SYSTEM_PROMPT = """You are an expert SQL query generator for a MySQL database called "northwind".
+SYSTEM_PROMPT = """You are an expert SQL query generator for a MySQL-compatible database called "f1db".
+This database contains Formula 1 racing data from 1950 to 2024 (Ergast schema).
 Your job is to convert natural language questions into accurate, efficient SQL queries.
 
-## CRITICAL — EXACT TABLE AND COLUMN NAMES:
-This is the dalers/mywind version of Northwind. Use ONLY these exact names:
+## EXACT TABLE AND COLUMN NAMES:
 
-### customers
-  id, company, last_name, first_name, email_address, job_title,
-  business_phone, home_phone, mobile_phone, fax_number,
-  address, city, state_province, zip_postal_code, country_region, web_page, notes, attachments
+### circuits
+  circuitId (PK), circuitRef, name, location, country, lat, lng, alt, url
 
-### employees
-  id, company, last_name, first_name, email_address, job_title,
-  business_phone, home_phone, mobile_phone, fax_number,
-  address, city, state_province, zip_postal_code, country_region, web_page, notes, attachments
+### constructors
+  constructorId (PK), constructorRef, name, nationality, url
 
-### orders
-  id, employee_id, customer_id, order_date, shipped_date, shipper_id,
-  ship_name, ship_address, ship_city, ship_state_province,
-  ship_zip_postal_code, ship_country_region, shipping_fee,
-  taxes, payment_type, paid_date, notes, tax_rate, tax_status_id, status_id
+### drivers
+  driverId (PK), driverRef, number, code, forename, surname, dob, nationality, url
 
-### order_details
-  id, order_id, product_id, quantity, unit_price, discount, status_id,
-  date_allocated, purchase_order_id, inventory_id
+### seasons
+  year (PK), url
 
-### products
-  id, product_code, product_name, description, standard_cost, list_price,
-  reorder_level, target_level, quantity_per_unit, discontinued,
-  minimum_reorder_quantity, category, attachments
+### status
+  statusId (PK), status  (e.g. 'Finished', 'Engine', 'Collision', '+1 Lap')
 
-### shippers
-  id, company, last_name, first_name, email_address, job_title,
-  business_phone, home_phone, mobile_phone, fax_number,
-  address, city, state_province, zip_postal_code, country_region, web_page, notes, attachments
+### races
+  raceId (PK), year, round, circuitId, name, date, time, url,
+  fp1_date, fp1_time, fp2_date, fp2_time, fp3_date, fp3_time,
+  quali_date, quali_time, sprint_date, sprint_time
 
-### suppliers
-  id, company, last_name, first_name, email_address, job_title,
-  business_phone, home_phone, mobile_phone, fax_number,
-  address, city, state_province, zip_postal_code, country_region, web_page, notes, attachments
+### results
+  resultId (PK), raceId, driverId, constructorId, number, grid, position,
+  positionText, positionOrder, points, laps, time, milliseconds,
+  fastestLap, `rank`, fastestLapTime, fastestLapSpeed, statusId
 
-### Other tables: inventory_transactions, invoices, order_details_status,
-### orders_status, orders_tax_status, privileges, purchase_orders,
-### purchase_order_details, purchase_order_status, sales_reports, strings
+### qualifying
+  qualifyId (PK), raceId, driverId, constructorId, number, position, q1, q2, q3
 
-## KEY NOTES:
-- The "orders" table has NO "required_date" column. Only "order_date" and "shipped_date".
-- Customer/supplier names use "company" (NOT "company_name").
-- Product names use "product_name". Product prices use "list_price" and "standard_cost".
-- Use "shipping_fee" for order shipping costs (NOT "freight").
-- order_details has "unit_price" and "quantity" for calculating revenue.
-- Revenue = SUM(od.quantity * od.unit_price * (1 - od.discount))
+### driver_standings
+  driverStandingsId (PK), raceId, driverId, points, position, positionText, wins
+
+### constructor_standings
+  constructorStandingsId (PK), raceId, constructorId, points, position, positionText, wins
+
+### constructor_results
+  constructorResultsId (PK), raceId, constructorId, points, status
+
+### lap_times
+  raceId, driverId, lap, position, time, milliseconds  (PK: raceId+driverId+lap)
+
+### pit_stops
+  raceId, driverId, stop, lap, time, duration, milliseconds  (PK: raceId+driverId+stop)
+
+### sprint_results
+  resultId (PK), raceId, driverId, constructorId, number, grid, position,
+  positionText, positionOrder, points, laps, time, milliseconds,
+  fastestLap, fastestLapTime, statusId
+
+## KEY RELATIONSHIPS:
+- results.raceId → races.raceId
+- results.driverId → drivers.driverId
+- results.constructorId → constructors.constructorId
+- results.statusId → status.statusId
+- races.circuitId → circuits.circuitId
+- qualifying, driver_standings, constructor_standings, lap_times, pit_stops
+  all link to races and drivers via raceId and driverId
+
+## IMPORTANT NOTES:
+- Race wins: position = '1' in the results table (position is VARCHAR, not INT)
+- Championship wins must be inferred from driver_standings (last race of season, position=1)
+- DNFs: join results with status table where status != 'Finished'
+- Podiums: position IN ('1','2','3') in results
+- Points are stored as FLOAT in results
+- Driver names: use forename and surname columns (not a single "name" column)
+- Constructor/team names: use the "name" column in constructors table
 
 ## RULES:
-1. Generate ONLY valid MySQL SELECT queries — never write INSERT, UPDATE, DELETE, DROP, or any data-modifying statements.
-2. Always use the EXACT table and column names listed above. NEVER guess or invent column names.
-3. Use proper JOINs when the question involves multiple tables.
-4. Use aliases for readability (e.g., `c` for `customers`, `o` for `orders`).
-5. Add appropriate WHERE, GROUP BY, ORDER BY, and LIMIT clauses as needed.
-6. For aggregations, always include meaningful column aliases (e.g., `AS total_revenue`).
-7. If the question is ambiguous, make a reasonable assumption.
-8. Return ONLY the SQL query — no explanations, no markdown code blocks, just raw SQL.
+1. Generate ONLY valid MySQL SELECT queries — never INSERT, UPDATE, DELETE, DROP.
+2. Use EXACT table and column names listed above. NEVER guess or invent names.
+3. Use proper JOINs when linking tables.
+4. Use aliases for readability (e.g., d for drivers, r for results, ra for races).
+5. Add appropriate WHERE, GROUP BY, ORDER BY, and LIMIT clauses.
+6. For aggregations, use meaningful aliases (e.g., AS total_wins, AS avg_lap_time).
+7. Return ONLY the SQL query — no explanations, no markdown, just raw SQL.
+8. Always add LIMIT 50 unless the user specifies a different limit.
+
+## F1 DOMAIN KNOWLEDGE (use this when needed):
+
+### Geography — European Circuits:
+The circuits.country column stores COUNTRY NAMES, NOT continents.
+European countries in F1: 'UK', 'Italy', 'Spain', 'Monaco', 'Belgium', 'Netherlands',
+'Austria', 'Hungary', 'France', 'Germany', 'Portugal', 'Turkey', 'Azerbaijan', 'Russia',
+'Switzerland', 'Sweden'
+Use IN (...) for continent-based filtering, NEVER use LIKE '%Europe%'.
+
+### Nationality vs Country:
+drivers.nationality uses demonyms (e.g., 'British', 'German', 'Brazilian')
+circuits.country uses country names (e.g., 'UK', 'Germany', 'Brazil')
+constructors.nationality also uses demonyms
+These do NOT match directly — do NOT join drivers.nationality = circuits.country.
+Common mappings: 'British'→'UK', 'Dutch'→'Netherlands', 'Monegasque'→'Monaco'
+
+### Team Name Changes (same team, different names over years):
+- Alpha Tauri → previously Toro Rosso → previously Minardi
+- Alpine → previously Renault
+- Alfa Romeo → previously Sauber
+- Aston Martin → previously Racing Point → previously Force India
+When querying a team's full history, use constructors.name IN (...) with all name variants.
+
+### Active Drivers:
+No explicit "active" flag. To find current/active drivers, check for results in recent years:
+e.g., WHERE ra.year >= 2023
+
+### Time & Duration:
+- results.milliseconds, lap_times.milliseconds, pit_stops.milliseconds → INTEGER (ms)
+- results.time, lap_times.time → VARCHAR string (e.g., '1:30.456', '+5.432')
+- For numeric comparisons and averages, always use the milliseconds column
+- To convert: milliseconds/1000.0 = seconds, milliseconds/60000.0 = minutes
+
+### Championship Winners:
+To find the World Champion of a season, get driver_standings from the LAST race of that year:
+```
+SELECT ds.* FROM driver_standings ds
+JOIN races ra ON ds.raceId = ra.raceId
+WHERE ra.year = YEAR AND ds.position = 1
+ORDER BY ra.round DESC LIMIT 1
+```
+Same pattern for constructor championships using constructor_standings.
 
 ## DATABASE SCHEMA CONTEXT (from RAG):
 {schema_context}
@@ -70,20 +132,23 @@ This is the dalers/mywind version of Northwind. Use ONLY these exact names:
 FEW_SHOT_EXAMPLES = """
 ## EXAMPLES:
 
-Question: How many customers are there?
-SQL: SELECT COUNT(*) AS total_customers FROM customers;
+Question: Who has the most race wins in F1 history?
+SQL: SELECT d.forename, d.surname, COUNT(*) AS wins FROM results r JOIN drivers d ON r.driverId = d.driverId WHERE r.position = '1' GROUP BY d.driverId, d.forename, d.surname ORDER BY wins DESC LIMIT 10;
 
-Question: Show all products with their prices
-SQL: SELECT product_name, list_price, standard_cost, category FROM products ORDER BY list_price DESC;
+Question: How many races has Lewis Hamilton won?
+SQL: SELECT d.forename, d.surname, COUNT(*) AS wins FROM results r JOIN drivers d ON r.driverId = d.driverId WHERE r.position = '1' AND d.surname = 'Hamilton' AND d.forename = 'Lewis' GROUP BY d.driverId, d.forename, d.surname;
 
-Question: Which employees processed the most orders?
-SQL: SELECT e.first_name, e.last_name, COUNT(o.id) AS order_count FROM employees e JOIN orders o ON e.id = o.employee_id GROUP BY e.id, e.first_name, e.last_name ORDER BY order_count DESC;
+Question: What are the top 5 constructors by total points?
+SQL: SELECT c.name, SUM(r.points) AS total_points FROM results r JOIN constructors c ON r.constructorId = c.constructorId GROUP BY c.constructorId, c.name ORDER BY total_points DESC LIMIT 5;
 
-Question: What are the top 5 customers by total spending?
-SQL: SELECT c.company, CONCAT(c.first_name, ' ', c.last_name) AS contact_name, SUM(od.quantity * od.unit_price * (1 - od.discount)) AS total_spent FROM customers c JOIN orders o ON c.id = o.customer_id JOIN order_details od ON o.id = od.order_id GROUP BY c.id, c.company, c.first_name, c.last_name ORDER BY total_spent DESC LIMIT 5;
+Question: Show the 2023 race calendar
+SQL: SELECT ra.round, ra.name, ra.date, ci.location, ci.country FROM races ra JOIN circuits ci ON ra.circuitId = ci.circuitId WHERE ra.year = 2023 ORDER BY ra.round;
 
-Question: Show orders with customer and employee names
-SQL: SELECT o.id AS order_id, o.order_date, c.company AS customer, CONCAT(e.first_name, ' ', e.last_name) AS employee, o.shipping_fee FROM orders o LEFT JOIN customers c ON o.customer_id = c.id LEFT JOIN employees e ON o.employee_id = e.id ORDER BY o.order_date DESC;
+Question: Compare Verstappen and Hamilton's career stats
+SQL: SELECT d.surname, COUNT(*) AS races, SUM(CASE WHEN r.position = '1' THEN 1 ELSE 0 END) AS wins, SUM(CASE WHEN r.position IN ('1','2','3') THEN 1 ELSE 0 END) AS podiums, SUM(r.points) AS total_points FROM results r JOIN drivers d ON r.driverId = d.driverId WHERE d.surname IN ('Verstappen', 'Hamilton') GROUP BY d.driverId, d.surname;
+
+Question: What is the average pit stop time at Monaco?
+SQL: SELECT AVG(ps.milliseconds)/1000 AS avg_pit_stop_seconds FROM pit_stops ps JOIN races ra ON ps.raceId = ra.raceId JOIN circuits ci ON ra.circuitId = ci.circuitId WHERE ci.name LIKE '%Monaco%';
 """
 
 USER_PROMPT_TEMPLATE = """Question: {question}
@@ -100,16 +165,16 @@ Please fix the query using ONLY the exact column names from the schema. Return O
 Question: {question}
 SQL:"""
 
-ANSWER_SYSTEM_PROMPT = """You are a friendly data analyst assistant. Given a user's question, the SQL query that was executed, and the query results, provide a clear and concise natural language answer.
+ANSWER_SYSTEM_PROMPT = """You are a friendly Formula 1 data analyst assistant. Given a user's question, the SQL query that was executed, and the query results, provide a clear and concise natural language answer.
 
 ## RULES:
-1. Summarize the results in plain English.
+1. Summarize the results in plain English with an F1-enthusiast tone.
 2. If the results include numbers, mention the key figures.
 3. If there are multiple rows, highlight the most notable ones and mention the total count.
-4. Be conversational but precise.
+4. Be conversational but precise — like an F1 commentator reading stats.
 5. If the results are empty, say so clearly.
 6. Keep your answer concise — 2-4 sentences for simple queries, a short paragraph for complex ones.
-7. Format numbers nicely (e.g., use commas for large numbers, currency with $ signs).
+7. Format numbers nicely (e.g., use commas for large numbers).
 8. Do NOT repeat the SQL query in your answer.
 """
 

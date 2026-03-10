@@ -16,18 +16,25 @@ class DatabaseConnector:
     def __init__(self):
         """Initialize MySQL connection pool."""
         try:
-            self.pool = pooling.MySQLConnectionPool(
-                pool_name="northwind_pool",
-                pool_size=5,
-                pool_reset_session=True,
-                host=Config.MYSQL_HOST,
-                port=Config.MYSQL_PORT,
-                user=Config.MYSQL_USER,
-                password=Config.MYSQL_PASSWORD,
-                database=Config.MYSQL_DATABASE,
-                charset="utf8mb4",
-                use_unicode=True,
-            )
+            pool_config = {
+                "pool_name": "f1db_pool",
+                "pool_size": 5,
+                "pool_reset_session": True,
+                "host": Config.MYSQL_HOST,
+                "port": Config.MYSQL_PORT,
+                "user": Config.MYSQL_USER,
+                "password": Config.MYSQL_PASSWORD,
+                "database": Config.MYSQL_DATABASE,
+                "charset": "utf8mb4",
+                "use_unicode": True,
+            }
+
+            # TiDB Cloud requires SSL/TLS
+            if Config.MYSQL_SSL:
+                pool_config["ssl_verify_cert"] = False
+                pool_config["ssl_verify_identity"] = False
+
+            self.pool = pooling.MySQLConnectionPool(**pool_config)
             print(f"[DB] Connected to MySQL ({Config.MYSQL_HOST}:{Config.MYSQL_PORT}/{Config.MYSQL_DATABASE})")
         except Error as e:
             print(f"[DB] Connection failed: {e}")
