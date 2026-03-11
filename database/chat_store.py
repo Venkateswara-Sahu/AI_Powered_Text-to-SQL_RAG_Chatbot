@@ -19,7 +19,7 @@ class ChatStore:
         """Create conversations and messages tables if they don't exist."""
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor()
 
             cursor.execute("""
@@ -66,7 +66,7 @@ class ChatStore:
         conv_id = str(uuid.uuid4())[:8]
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor()
             cursor.execute(
                 "INSERT INTO conversations (id, title) VALUES (%s, %s)",
@@ -85,7 +85,7 @@ class ChatStore:
         """Get all conversations, pinned first then newest first."""
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor(dictionary=True)
             cursor.execute("""
                 SELECT id, title, pinned, created_at, updated_at
@@ -111,7 +111,7 @@ class ChatStore:
         """Get all messages for a conversation."""
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor(dictionary=True)
             cursor.execute(
                 "SELECT role, content, data FROM messages WHERE conversation_id = %s ORDER BY id",
@@ -136,7 +136,7 @@ class ChatStore:
         """Add a message to a conversation."""
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor()
             data_json = json.dumps(data, default=str) if data else None
             cursor.execute(
@@ -159,7 +159,7 @@ class ChatStore:
         """Delete a conversation and its messages."""
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor()
             cursor.execute("DELETE FROM conversations WHERE id = %s", (conversation_id,))
             connection.commit()
@@ -175,7 +175,7 @@ class ChatStore:
         """Delete all conversations. Returns count deleted."""
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor()
             cursor.execute("SELECT COUNT(*) FROM conversations")
             count = cursor.fetchone()[0]
@@ -193,7 +193,7 @@ class ChatStore:
         """Get recent messages for multi-turn context."""
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor(dictionary=True)
             cursor.execute(
                 """SELECT role, content FROM messages
@@ -214,7 +214,7 @@ class ChatStore:
         """Rename a conversation."""
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor()
             cursor.execute(
                 "UPDATE conversations SET title = %s WHERE id = %s",
@@ -233,10 +233,10 @@ class ChatStore:
         """Pin or unpin a conversation."""
         connection = None
         try:
-            connection = self.db.pool.get_connection()
+            connection = self.db.get_connection()
             cursor = connection.cursor()
             cursor.execute(
-                "UPDATE conversations SET pinned = %s WHERE id = %s",
+                "UPDATE conversations SET pinned = %s, updated_at = updated_at WHERE id = %s",
                 (1 if pinned else 0, conversation_id)
             )
             connection.commit()

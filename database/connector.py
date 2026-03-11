@@ -40,6 +40,26 @@ class DatabaseConnector:
             print(f"[DB] Connection failed: {e}")
             raise
 
+    def get_connection(self):
+        """Get a connection from pool, with fallback to fresh connection on stale pool."""
+        try:
+            return self.pool.get_connection()
+        except Error:
+            # Pool connection stale — create fresh direct connection
+            connect_args = {
+                "host": Config.MYSQL_HOST,
+                "port": Config.MYSQL_PORT,
+                "user": Config.MYSQL_USER,
+                "password": Config.MYSQL_PASSWORD,
+                "database": Config.MYSQL_DATABASE,
+                "charset": "utf8mb4",
+                "use_unicode": True,
+            }
+            if Config.MYSQL_SSL:
+                connect_args["ssl_verify_cert"] = False
+                connect_args["ssl_verify_identity"] = False
+            return mysql.connector.connect(**connect_args)
+
     def _is_safe_query(self, sql: str) -> bool:
         """Check if the SQL query is read-only (SELECT only)."""
         cleaned = sql.strip().upper()
@@ -76,7 +96,7 @@ class DatabaseConnector:
 
         connection = None
         try:
-            connection = self.pool.get_connection()
+            connection = self.get_connection()
             cursor = connection.cursor(dictionary=True)
             cursor.execute(cleaned)
             rows = cursor.fetchall()
@@ -109,7 +129,10 @@ class DatabaseConnector:
             }
         finally:
             if connection:
-                connection.close()
+                try:
+                    connection.close()
+                except Exception:
+                    pass
 
     def get_schema_info(self) -> list[dict]:
         """

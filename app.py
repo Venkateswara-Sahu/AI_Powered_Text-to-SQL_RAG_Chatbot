@@ -1,4 +1,4 @@
-"""Flask application — F1InsightAI Text-to-SQL Chatbot."""
+"""Flask application — F1InsightAI Text-to-SQL RAG Chatbot."""
 
 import time
 from flask import Flask, render_template, request, jsonify

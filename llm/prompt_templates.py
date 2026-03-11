@@ -1,4 +1,4 @@
-"""Prompt templates for Text-to-SQL generation — F1 Database (Ergast schema)."""
+"""Prompt templates for Text-to-SQL RAG generation — F1 Database (Ergast schema)."""
 
 SYSTEM_PROMPT = """You are an expert SQL query generator for a MySQL-compatible database called "f1db".
 This database contains Formula 1 racing data from 1950 to 2024 (Ergast schema).
@@ -81,6 +81,9 @@ Your job is to convert natural language questions into accurate, efficient SQL q
 6. For aggregations, use meaningful aliases (e.g., AS total_wins, AS avg_lap_time).
 7. Return ONLY the SQL query — no explanations, no markdown, just raw SQL.
 8. Always add LIMIT 50 unless the user specifies a different limit.
+9. For circuit or race names, ALWAYS use LIKE with wildcards — circuit names in the DB often
+   include prefixes (e.g., 'Circuit de Spa-Francorchamps', 'Autodromo Nazionale di Monza').
+   Example: WHERE ci.name LIKE '%Spa%' or WHERE ci.name LIKE '%Monza%'
 
 ## F1 DOMAIN KNOWLEDGE (use this when needed):
 
@@ -149,6 +152,9 @@ SQL: SELECT d.surname, COUNT(*) AS races, SUM(CASE WHEN r.position = '1' THEN 1 
 
 Question: What is the average pit stop time at Monaco?
 SQL: SELECT AVG(ps.milliseconds)/1000 AS avg_pit_stop_seconds FROM pit_stops ps JOIN races ra ON ps.raceId = ra.raceId JOIN circuits ci ON ra.circuitId = ci.circuitId WHERE ci.name LIKE '%Monaco%';
+
+Question: How many wins does Schumacher have at Spa?
+SQL: SELECT d.forename, d.surname, COUNT(*) AS wins FROM results r JOIN drivers d ON r.driverId = d.driverId JOIN races ra ON r.raceId = ra.raceId JOIN circuits ci ON ra.circuitId = ci.circuitId WHERE r.position = '1' AND ci.name LIKE '%Spa%' AND d.surname = 'Schumacher' GROUP BY d.driverId, d.forename, d.surname;
 """
 
 USER_PROMPT_TEMPLATE = """Question: {question}
