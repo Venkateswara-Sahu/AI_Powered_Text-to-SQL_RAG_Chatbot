@@ -1,30 +1,27 @@
-# 🏎️ F1InsightAI — AI-Powered Formula 1 Text-to-SQL Chatbot
+# 🏎️ F1InsightAI — AI-Powered Formula 1 Text-to-SQL RAG Chatbot
 
-An AI-powered chatbot that converts natural language questions into SQL queries over a comprehensive Formula 1 database (1950–2024) hosted on **TiDB Cloud**. Built with Flask, a LangGraph agentic pipeline, Groq API (Llama 3.3 70B), and FAISS-based RAG for schema-aware SQL generation.
+An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural language questions into SQL queries over a comprehensive Formula 1 database (1950–2024) hosted on **TiDB Cloud**. Built with Flask, a LangGraph agentic pipeline, Groq API (Llama 3.3 70B), and FAISS-based RAG for schema-aware SQL generation.
 
 ## ✨ Features
 
 ### Core
 - **Natural Language to SQL** — Ask questions about F1 in plain English, get accurate SQL queries
-- **LangGraph Agentic Pipeline** — Multi-step reasoning with automatic retries and error correction
 - **RAG-Powered Schema Retrieval** — FAISS + sentence-transformers for context-aware SQL generation
+- **LangGraph Agentic Pipeline** — Multi-step reasoning with classify → retrieve → generate → execute → reflect → answer
 - **Auto-Retry with Error Feedback** — If a query fails, the agent gets the error and automatically fixes the SQL
 - **Read-Only SQL Enforcement** — Only SELECT queries are allowed; all write operations are blocked
 - **Groq API** — Lightning-fast inference using Llama 3.3 70B (free tier)
 
 ### User Experience
-- **ChatGPT-Style Conversations** — Full conversation history with new chat, switch, rename, pin, and delete
-- **📊 Auto Chart Visualizations** — Bar, pie, and line charts auto-generated from query results using Chart.js
-- **💡 AI Follow-up Suggestions** — LLM-generated follow-up questions appear as clickable chips after each answer
+- **🎬 Cinematic Data Interface** — Particle network background, Omni-Search paradigm, Bento Box results grid
+- **📊 Auto Chart Visualizations** — Bar, pie, and line charts auto-generated with distinct F1-themed colors
+- **💡 AI Follow-up Suggestions** — LLM-generated follow-up questions appear as clickable pill chips
 - **📌 Pin & Rename Chats** — Pin important conversations and rename them for easy reference
-- **SQL Syntax Highlighting** — Color-coded keywords, functions, strings, and numbers
+- **🧠 Agent Reasoning** — Collapsible accordion showing each step of the AI's thinking process
+- **SQL Syntax Highlighting** — Color-coded keywords in a dark IDE-style card
 - **CSV Export** — Download any query result table as a `.csv` file
 - **SQL Download** — Download generated SQL as a `.sql` file
-- **Execution Time Stats** — See how long each query takes
-- **Welcome Dashboard** — Live database stats (tables, rows, columns, model) + suggestion chips
-- **Toast Notifications** — Non-intrusive feedback for copy, download, and errors
-- **Premium Dark UI** — F1-themed design with glassmorphism, micro-animations, and depth effects
-- **Responsive Design** — Works on desktop, tablet, and mobile
+- **Glassmorphism UI** — Frosted-glass cards, staggered cascade animations, responsive design
 - **🐳 Docker Ready** — Dockerfile + Docker Compose for one-command deployment
 
 ## 🛠️ Tech Stack

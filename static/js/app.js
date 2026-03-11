@@ -1,29 +1,28 @@
 /**
- * F1InsightAI — Formula 1 Data Chatbot
- * Server-side conversations + Agent step display
+ * F1InsightAI — Cinematic Data Interface
+ * tsParticles + Omni-Search + Bento Box Grid
  */
 
 // ── DOM Elements ────────────────────────────────────────────
-const chatArea = document.getElementById('chatArea');
+const appShell = document.getElementById('appShell');
+const responseCanvas = document.getElementById('responseCanvas');
+const searchHero = document.getElementById('searchHero');
+const searchDock = document.getElementById('searchDock');
 const chatForm = document.getElementById('chatForm');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
-const welcomeCard = document.getElementById('welcomeCard');
 const toastContainer = document.getElementById('toastContainer');
 
-// Sidebar
-const sidebar = document.getElementById('sidebar');
-const sidebarOverlay = document.getElementById('sidebarOverlay');
-const sidebarToggle = document.getElementById('sidebarToggle');
-const sidebarCollapse = document.getElementById('sidebarCollapse');
+// History Drawer
+const historyTrigger = document.getElementById('historyTrigger');
+const historyDrawer = document.getElementById('historyDrawer');
+const drawerOverlay = document.getElementById('drawerOverlay');
+const drawerClose = document.getElementById('drawerClose');
 const chatList = document.getElementById('chatList');
 const newChatBtn = document.getElementById('newChatBtn');
 const clearAllChats = document.getElementById('clearAllChats');
-
-// Theme
-const themeToggle = document.getElementById('themeToggle');
 
 // Stats
 const statTables = document.getElementById('statTables');
@@ -32,31 +31,93 @@ const statColumns = document.getElementById('statColumns');
 const statModel = document.getElementById('statModel');
 
 
-// Store the initial welcome card HTML so we can restore it
-const welcomeCardHTML = welcomeCard ? welcomeCard.outerHTML : '';
-
-
 // ── State ───────────────────────────────────────────────────
 let isLoading = false;
 let currentChatId = null;
-let conversations = []; // Loaded from server
-let sidebarCollapsed = false;
+let conversations = [];
+let isDocked = false;
+let particlesInstance = null;
 
 
 // ── Initialize ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+    initParticles();
     checkHealth();
     loadStats();
-    loadTheme();
     loadConversations();
     autoResizeTextarea();
-
-    // Restore collapsed state from localStorage
-    const savedCollapsed = localStorage.getItem('f1_sidebar_collapsed');
-    if (savedCollapsed === 'true' && window.innerWidth > 768) {
-        collapseSidebar();
-    }
 });
+
+
+// ── tsParticles ─────────────────────────────────────────────
+async function initParticles() {
+    try {
+        particlesInstance = await tsParticles.load("tsparticles", {
+            fullScreen: false,
+            background: { color: "transparent" },
+            fpsLimit: 60,
+            particles: {
+                number: { value: 50, density: { enable: true, area: 900 } },
+                color: { value: ["#E10600", "#FF6B35", "#ff4444", "#cc3300"] },
+                shape: { type: "circle" },
+                opacity: {
+                    value: { min: 0.15, max: 0.4 },
+                    animation: { enable: true, speed: 0.8, minimumValue: 0.1, sync: false }
+                },
+                size: {
+                    value: { min: 1, max: 3 },
+                    animation: { enable: true, speed: 1.5, minimumValue: 0.5, sync: false }
+                },
+                links: {
+                    enable: true,
+                    distance: 160,
+                    color: "#E10600",
+                    opacity: 0.08,
+                    width: 1,
+                },
+                move: {
+                    enable: true,
+                    speed: 0.6,
+                    direction: "none",
+                    outModes: { default: "out" },
+                },
+            },
+            interactivity: {
+                events: {
+                    onHover: { enable: true, mode: "grab" },
+                },
+                modes: {
+                    grab: { distance: 180, links: { opacity: 0.15 } },
+                },
+            },
+            detectRetina: true,
+        });
+    } catch (e) {
+        console.warn('tsParticles init failed:', e);
+    }
+}
+
+function accelerateParticles() {
+    if (!particlesInstance) return;
+    const p = particlesInstance;
+    try {
+        p.options.particles.move.speed = 3;
+        p.options.particles.opacity.value = { min: 0.2, max: 0.6 };
+        p.options.particles.links.opacity = 0.15;
+        p.refresh();
+    } catch(e) { /* ignore */ }
+}
+
+function calmParticles() {
+    if (!particlesInstance) return;
+    const p = particlesInstance;
+    try {
+        p.options.particles.move.speed = 0.6;
+        p.options.particles.opacity.value = { min: 0.15, max: 0.4 };
+        p.options.particles.links.opacity = 0.08;
+        p.refresh();
+    } catch(e) { /* ignore */ }
+}
 
 
 // ── Health Check ────────────────────────────────────────────
@@ -66,7 +127,7 @@ async function checkHealth() {
         const data = await res.json();
         if (data.status === 'healthy') {
             statusDot.className = 'status-dot online';
-            statusText.textContent = `${data.rag_indexed ? data.model : 'Connecting...'}`;
+            statusText.textContent = data.rag_indexed ? data.model : 'Connecting...';
         } else {
             statusDot.className = 'status-dot error';
             statusText.textContent = 'DB disconnected';
@@ -78,150 +139,100 @@ async function checkHealth() {
 }
 
 
-// ── Load Database Stats ─────────────────────────────────────
+// ── Database Stats ──────────────────────────────────────────
 async function loadStats() {
     try {
         const res = await fetch('/api/stats');
         const data = await res.json();
-        statTables.textContent = data.table_count;
-        statRows.textContent = data.total_rows.toLocaleString();
-        statColumns.textContent = data.total_columns;
-        statModel.textContent = data.model.split('-').slice(0, 2).join(' ');
-    } catch {
-        // Stats failed, leave placeholders
-    }
+        if (data.table_count !== undefined) {
+            statTables.textContent = data.table_count;
+            statRows.textContent = (data.total_rows || 0).toLocaleString();
+            statColumns.textContent = data.total_columns || 0;
+            statModel.textContent = data.model || '—';
+        }
+    } catch { /* ignore */ }
 }
 
 
-// ── Theme Toggle ────────────────────────────────────────────
-function loadTheme() {
-    const saved = localStorage.getItem('nw_theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', saved);
+// ── History Drawer ──────────────────────────────────────────
+historyTrigger.addEventListener('click', openDrawer);
+drawerOverlay.addEventListener('click', closeDrawer);
+drawerClose.addEventListener('click', closeDrawer);
+
+function openDrawer() {
+    historyDrawer.classList.add('open');
+    drawerOverlay.classList.add('open');
+}
+function closeDrawer() {
+    historyDrawer.classList.remove('open');
+    drawerOverlay.classList.remove('open');
 }
 
-themeToggle.addEventListener('click', () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    const next = current === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('nw_theme', next);
-    showToast(`Switched to ${next} mode`, 'info');
-});
 
-
-// ── Sidebar Collapse / Expand ───────────────────────────────
-function collapseSidebar() {
-    sidebarCollapsed = true;
-    sidebar.classList.add('collapsed');
-    document.querySelector('.app-container').classList.add('sidebar-collapsed');
-    sidebarToggle.style.display = 'flex';
-    localStorage.setItem('f1_sidebar_collapsed', 'true');
-}
-
-function expandSidebar() {
-    sidebarCollapsed = false;
-    sidebar.classList.remove('collapsed');
-    document.querySelector('.app-container').classList.remove('sidebar-collapsed');
-    if (window.innerWidth > 768) {
-        sidebarToggle.style.display = 'none';
-    }
-    localStorage.setItem('f1_sidebar_collapsed', 'false');
-}
-
-// Collapse button inside sidebar
-sidebarCollapse.addEventListener('click', () => {
-    if (window.innerWidth <= 768) {
-        // Mobile: close overlay
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('open');
-    } else {
-        // Desktop: collapse
-        collapseSidebar();
-    }
-});
-
-// Toggle button in header (expands collapsed sidebar)
-sidebarToggle.addEventListener('click', () => {
-    if (window.innerWidth <= 768) {
-        sidebar.classList.add('open');
-        sidebarOverlay.classList.add('open');
-    } else {
-        expandSidebar();
-    }
-});
-
-sidebarOverlay.addEventListener('click', () => {
-    sidebar.classList.remove('open');
-    sidebarOverlay.classList.remove('open');
-});
-
-
-// ── Conversation Management (Server-Side) ───────────────────
-
+// ── Conversations ───────────────────────────────────────────
 async function loadConversations() {
     try {
         const res = await fetch('/api/conversations');
         const data = await res.json();
         conversations = data.conversations || [];
         renderChatList();
-    } catch {
-        conversations = [];
-        renderChatList();
-    }
+    } catch { /* ignore */ }
 }
 
-// Create a new chat
 newChatBtn.addEventListener('click', () => {
-    startNewChat();
-    if (window.innerWidth <= 768) {
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('open');
-    }
+    currentChatId = null;
+    isDocked = false;
+    appShell.classList.remove('docked');
+    responseCanvas.innerHTML = '';
+    closeDrawer();
+    userInput.focus();
 });
 
-function startNewChat() {
-    currentChatId = null;
-    chatArea.innerHTML = welcomeCardHTML;
-    renderChatList();
-    loadStats();  // Re-populate stat cards
-    userInput.focus();
-}
-
-// Clear all chats
 clearAllChats.addEventListener('click', async () => {
-    if (conversations.length === 0) return;
+    if (!confirm('Delete all conversations?')) return;
     try {
         await fetch('/api/conversations/clear', { method: 'DELETE' });
         conversations = [];
-        startNewChat();
-        showToast('All chats cleared', 'info');
-    } catch {
-        showToast('Failed to clear chats', 'error');
-    }
+        currentChatId = null;
+        isDocked = false;
+        appShell.classList.remove('docked');
+        responseCanvas.innerHTML = '';
+        renderChatList();
+        showToast('All chats cleared', 'success');
+    } catch { showToast('Failed to clear', 'error'); }
 });
 
-// Load a specific conversation
-async function loadChat(chatId) {
-    currentChatId = chatId;
-    chatArea.innerHTML = '';
-
+async function loadChat(id) {
     try {
-        const res = await fetch(`/api/conversations/${chatId}`);
+        const res = await fetch(`/api/conversations/${id}`);
         const data = await res.json();
-        const messages = data.messages || [];
+        currentChatId = id;
+        closeDrawer();
 
-        messages.forEach(msg => {
+        // Dock the search
+        isDocked = true;
+        appShell.classList.add('docked');
+
+        // Render messages
+        responseCanvas.innerHTML = '';
+        const messages = data.messages || [];
+        for (let i = 0; i < messages.length; i++) {
+            const msg = messages[i];
             if (msg.role === 'user') {
-                appendMessageDOM('user', msg.content);
+                appendUserInline(msg.content);
             } else if (msg.role === 'assistant') {
-                if (msg.data) {
-                    appendAssistantMessageDOM(msg.data);
+                // Use stored data object if available, otherwise show as text
+                if (msg.data && typeof msg.data === 'object') {
+                    appendBentoGrid(msg.data);
                 } else {
-                    appendMessageDOM('assistant', msg.content);
+                    // Plain text fallback (old messages or errors)
+                    const fallback = document.createElement('div');
+                    fallback.className = 'bento-grid';
+                    fallback.innerHTML = `<div class="bento-card bento-answer"><div class="answer-text">${escapeHtml(msg.content || '')}</div></div>`;
+                    responseCanvas.appendChild(fallback);
                 }
-            } else if (msg.role === 'error') {
-                appendErrorDOM(msg.content, '');
             }
-        });
+        }
 
         renderChatList();
         scrollToBottom();
@@ -230,87 +241,76 @@ async function loadChat(chatId) {
     }
 }
 
-async function deleteChat(chatId, event) {
-    event.stopPropagation();
+async function deleteChat(id, e) {
+    e.stopPropagation();
+    if (!confirm('Delete this conversation?')) return;
     try {
-        await fetch(`/api/conversations/${chatId}`, { method: 'DELETE' });
-        conversations = conversations.filter(c => c.id !== chatId);
-        startNewChat();  // Always go to a fresh new chat
-        showToast('Chat deleted', 'info');
-    } catch {
-        showToast('Failed to delete chat', 'error');
-    }
+        await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
+        if (currentChatId === id) {
+            currentChatId = null;
+            isDocked = false;
+            appShell.classList.remove('docked');
+            responseCanvas.innerHTML = '';
+        }
+        await loadConversations();
+        showToast('Chat deleted', 'success');
+    } catch { showToast('Failed to delete', 'error'); }
 }
 
-async function renameChat(chatId, event) {
-    event.stopPropagation();
-    const chat = conversations.find(c => c.id === chatId);
-    if (!chat) return;
-
-    const item = event.target.closest('.chat-item');
+async function renameChat(id, e) {
+    e.stopPropagation();
+    const item = e.target.closest('.chat-item');
     const titleEl = item.querySelector('.chat-item-title');
-    const oldTitle = chat.title;
+    const currentTitle = titleEl.textContent.replace(/^📌\s*/, '');
 
-    // Replace title with input
     const input = document.createElement('input');
-    input.type = 'text';
     input.className = 'chat-rename-input';
-    input.value = oldTitle;
+    input.value = currentTitle;
     titleEl.replaceWith(input);
     input.focus();
     input.select();
 
+    // Prevent clicks on the input from triggering loadChat
+    input.addEventListener('click', (ev) => ev.stopPropagation());
+    input.addEventListener('mousedown', (ev) => ev.stopPropagation());
+
     const save = async () => {
-        const newTitle = input.value.trim();
-        if (newTitle && newTitle !== oldTitle) {
-            try {
-                await fetch(`/api/conversations/${chatId}/rename`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title: newTitle })
-                });
-                chat.title = newTitle;
-                showToast('Chat renamed', 'info');
-            } catch {
-                showToast('Rename failed', 'error');
-            }
-        }
-        renderChatList();
+        const newTitle = input.value.trim() || currentTitle;
+        try {
+            await fetch(`/api/conversations/${id}/rename`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newTitle }),
+            });
+            await loadConversations();
+        } catch { await loadConversations(); }
     };
 
     input.addEventListener('blur', save);
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-        if (e.key === 'Escape') { input.value = oldTitle; input.blur(); }
+    input.addEventListener('keydown', (ev) => {
+        ev.stopPropagation();
+        if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+        if (ev.key === 'Escape') { input.value = currentTitle; input.blur(); }
     });
 }
 
-async function pinChat(chatId, event) {
-    event.stopPropagation();
-    const chat = conversations.find(c => c.id === chatId);
-    if (!chat) return;
-
-    const newPinned = !chat.pinned;
+async function pinChat(id, e) {
+    e.stopPropagation();
+    // Find current pinned state and toggle it
+    const chat = conversations.find(c => c.id === id);
+    const newPinned = chat ? !chat.pinned : true;
     try {
-        await fetch(`/api/conversations/${chatId}/pin`, {
+        await fetch(`/api/conversations/${id}/pin`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pinned: newPinned })
+            body: JSON.stringify({ pinned: newPinned }),
         });
-        chat.pinned = newPinned;
-        // Re-sort: pinned first, then by updated_at
-        conversations.sort((a, b) => {
-            if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
-            return new Date(b.updated_at) - new Date(a.updated_at);
-        });
-        renderChatList();
-        showToast(newPinned ? 'Chat pinned' : 'Chat unpinned', 'info');
-    } catch {
-        showToast('Pin failed', 'error');
-    }
+        await loadConversations();
+    } catch { showToast('Failed to pin', 'error'); }
 }
 
-// Render the conversation list in sidebar
+
+// ── Render Chat List ────────────────────────────────────────
 function renderChatList() {
     if (conversations.length === 0) {
         chatList.innerHTML = `
@@ -325,30 +325,25 @@ function renderChatList() {
 
     const today = new Date().toDateString();
     const yesterday = new Date(Date.now() - 86400000).toDateString();
-
     let html = '';
     let lastDateLabel = '';
     let hasPinned = conversations.some(c => c.pinned);
     let pinnedSectionDone = false;
 
     conversations.forEach(chat => {
-        // Add PINNED section header
         if (chat.pinned && !pinnedSectionDone && lastDateLabel === '') {
             html += `<div class="sidebar-date-label">📌 Pinned</div>`;
         }
-        // Transition from pinned to unpinned
         if (!chat.pinned && !pinnedSectionDone && hasPinned) {
             pinnedSectionDone = true;
-            lastDateLabel = ''; // Reset so date labels show
+            lastDateLabel = '';
         }
-
         if (!chat.pinned) {
             const chatDate = new Date(chat.created_at || chat.createdAt).toDateString();
             let dateLabel;
             if (chatDate === today) dateLabel = 'Today';
             else if (chatDate === yesterday) dateLabel = 'Yesterday';
             else dateLabel = new Date(chat.created_at || chat.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
             if (dateLabel !== lastDateLabel) {
                 html += `<div class="sidebar-date-label">${dateLabel}</div>`;
                 lastDateLabel = dateLabel;
@@ -393,9 +388,7 @@ function renderChatList() {
 chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const msg = userInput.value.trim();
-    if (msg && !isLoading) {
-        sendMessage(msg);
-    }
+    if (msg && !isLoading) sendMessage(msg);
 });
 
 userInput.addEventListener('keydown', (e) => {
@@ -412,7 +405,6 @@ function autoResizeTextarea() {
     });
 }
 
-// Global function for suggestion chips
 function askQuestion(text) {
     if (!isLoading) {
         userInput.value = text;
@@ -426,18 +418,21 @@ async function sendMessage(message) {
     isLoading = true;
     sendBtn.disabled = true;
 
-    // Hide welcome card if visible
-    const wc = document.getElementById('welcomeCard');
-    if (wc) wc.remove();
+    // Dock search bar on first message
+    if (!isDocked) {
+        isDocked = true;
+        appShell.classList.add('docked');
+    }
 
-    // Add user message to DOM
-    appendMessageDOM('user', message);
+    // Show user message
+    appendUserInline(message);
 
     userInput.value = '';
     userInput.style.height = 'auto';
 
-    // Show typing indicator
-    const typingEl = appendTyping();
+    // Show loading
+    const loadingEl = appendLoading();
+    accelerateParticles();
 
     try {
         const res = await fetch('/api/chat', {
@@ -450,24 +445,24 @@ async function sendMessage(message) {
         });
 
         const data = await res.json();
-        removeTyping(typingEl);
+        removeElement(loadingEl);
+        calmParticles();
 
-        // Update current chat ID (server may have created a new one)
         if (data.conversation_id) {
             currentChatId = data.conversation_id;
         }
 
-        // Refresh conversation list from server
         await loadConversations();
 
         if (data.error && !data.answer) {
-            appendErrorDOM(data.error, message);
+            appendErrorBento(data.error, message);
         } else {
-            appendAssistantMessageDOM(data);
+            appendBentoGrid(data);
         }
     } catch (err) {
-        removeTyping(typingEl);
-        appendErrorDOM('Failed to connect to the server. Please check if the app is running.', message);
+        removeElement(loadingEl);
+        calmParticles();
+        appendErrorBento('Failed to connect to the server. Please check if the app is running.', message);
     }
 
     isLoading = false;
@@ -477,195 +472,199 @@ async function sendMessage(message) {
 
 
 // ── DOM Rendering ───────────────────────────────────────────
-function appendMessageDOM(role, text) {
+function appendUserInline(text) {
     const div = document.createElement('div');
-    div.className = `message ${role}`;
-
-    const avatar = role === 'user' ? 'You' : 'AI';
+    div.className = 'user-message-inline';
     div.innerHTML = `
-        <div class="message-avatar">${avatar}</div>
-        <div class="message-content">
-            <div class="message-bubble">${escapeHtml(text)}</div>
-        </div>`;
-    chatArea.appendChild(div);
+        <span class="user-msg-text">${escapeHtml(text)}</span>
+        <button class="user-copy-btn" title="Copy question" onclick="copyQuestion(this, '${escapeForTemplate(text)}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+        </button>`;
+    responseCanvas.appendChild(div);
     scrollToBottom();
 }
 
-function appendAssistantMessageDOM(data) {
-    const div = document.createElement('div');
-    div.className = 'message assistant';
+function copyQuestion(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        btn.innerHTML = '✓';
+        setTimeout(() => {
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+        }, 1500);
+        showToast('Question copied', 'success');
+    }).catch(() => showToast('Failed to copy', 'error'));
+}
 
-    let html = `
-        <div class="message-avatar">AI</div>
-        <div class="message-content">
-            <div class="message-bubble">${escapeHtml(data.answer || 'No answer generated.')}</div>`;
+function appendBentoGrid(data) {
+    const grid = document.createElement('div');
+    grid.className = 'bento-grid';
 
-    // Execution time badge
+    const hasChart = data.results && data.results.rows && data.results.rows.length > 0
+        && data.results.rows.length <= 50 && data.results.columns.length >= 2;
+    const chartType = hasChart ? detectChartType(data.results.columns, data.results.rows) : null;
+    const chartId = 'chart_' + Date.now();
+    const tableId = 'table_' + Date.now();
+
+    // Card 1: Answer
+    let answerHtml = `
+        <div class="bento-card bento-answer">
+            <div class="answer-text">${escapeHtml(data.answer || 'No answer generated.')}</div>`;
     if (data.execution_time) {
-        html += `
-            <div class="exec-stats">
+        answerHtml += `
+            <div class="exec-badge">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                 </svg>
                 ${data.execution_time}s
             </div>`;
     }
+    answerHtml += `</div>`;
+    grid.innerHTML = answerHtml;
 
-    // Agent steps (reasoning trace)
-    if (data.agent_steps && data.agent_steps.length > 0) {
-        html += `
-            <details class="agent-steps">
-                <summary>🧠 Agent Reasoning (${data.agent_steps.length} steps)</summary>
-                <div class="agent-steps-list">`;
-        data.agent_steps.forEach((step, i) => {
-            const icon = step.result && step.result.startsWith('✅') ? '✅' :
-                step.result && step.result.startsWith('❌') ? '❌' :
-                    step.result && step.result.startsWith('⚠️') ? '⚠️' : '🔧';
-            html += `
-                    <div class="agent-step">
-                        <span class="agent-step-num">${i + 1}</span>
-                        <div class="agent-step-content">
-                            <div class="agent-step-node">${escapeHtml(step.node || '')}</div>
-                            <div class="agent-step-action">${escapeHtml(step.action || '')}</div>
-                            <div class="agent-step-result">${escapeHtml(step.result || '')}</div>
-                        </div>
-                    </div>`;
-        });
-        html += `</div></details>`;
+    // Card 2: Chart (if applicable)
+    if (chartType) {
+        const chartCard = document.createElement('div');
+        chartCard.className = 'bento-card bento-chart';
+        chartCard.innerHTML = `
+            <div class="chart-label">📊 Visualization</div>
+            <div class="chart-wrap"><canvas id="${chartId}"></canvas></div>`;
+        grid.appendChild(chartCard);
     }
 
-    // SQL block
-    if (data.sql) {
-        html += `
-            <div class="sql-block">
-                <div class="sql-header">
-                    <span>Generated SQL</span>
-                    <div class="sql-actions">
-                        <button class="copy-btn" onclick="copySQL(this, \`${escapeForTemplate(data.sql)}\`)">Copy</button>
-                        <button class="copy-btn" onclick="downloadSQL(\`${escapeForTemplate(data.sql)}\`)">↓ .sql</button>
-                    </div>
-                </div>
-                <pre class="sql-code">${highlightSQL(data.sql)}</pre>
-            </div>`;
-    }
-
-    // Results table + chart
-    const chartId = 'chart_' + Date.now();
+    // Card 3: Table
     if (data.results && data.results.rows && data.results.rows.length > 0) {
+        const tableCard = document.createElement('div');
+        tableCard.className = 'bento-card bento-table';
         const cols = data.results.columns;
         const rows = data.results.rows;
-        const tableId = 'table_' + Date.now();
 
-        html += `
-            <div class="results-block">
-                <div class="results-header">
-                    <div class="results-header-left">
-                        <span>Query Results</span>
-                        <span class="results-count">${data.results.row_count} row${data.results.row_count > 1 ? 's' : ''}</span>
-                    </div>
-                    <button class="csv-btn" onclick="downloadCSV('${tableId}')">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        CSV
-                    </button>
+        let tableHtml = `
+            <div class="table-card-header">
+                <div>
+                    <span class="table-card-title">Query Results</span>
+                    <span class="row-count">${data.results.row_count} row${data.results.row_count > 1 ? 's' : ''}</span>
                 </div>
-                <div class="results-table-container">
-                    <table class="results-table" id="${tableId}">
-                        <thead><tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
-                        <tbody>
-                            ${rows.map(row =>
-            `<tr>${cols.map(c => `<td title="${escapeHtml(String(row[c] ?? ''))}">${escapeHtml(String(row[c] ?? 'NULL'))}</td>`).join('')}</tr>`
-        ).join('')}
-                        </tbody>
-                    </table>
-                </div>
+                <button class="csv-btn" onclick="downloadCSV('${tableId}')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    CSV
+                </button>
+            </div>
+            <div class="table-scroll">
+                <table class="results-table" id="${tableId}">
+                    <thead><tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+                    <tbody>
+                        ${rows.map(row =>
+                            `<tr>${cols.map(c => `<td title="${escapeHtml(String(row[c] ?? ''))}">${escapeHtml(String(row[c] ?? 'NULL'))}</td>`).join('')}</tr>`
+                        ).join('')}
+                    </tbody>
+                </table>
             </div>`;
+        tableCard.innerHTML = tableHtml;
+        grid.appendChild(tableCard);
+    }
 
-        // Chart container
-        const chartType = detectChartType(cols, rows);
-        if (chartType) {
-            html += `
-                <div class="chart-block">
-                    <div class="chart-header">
-                        <span>📊 Visualization</span>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="${chartId}"></canvas>
+    // Card 4: Agent Steps (side-by-side with SQL)
+    if (data.agent_steps && data.agent_steps.length > 0) {
+        const stepsCard = document.createElement('div');
+        stepsCard.className = `bento-card bento-steps${chartType ? '' : ' no-chart'}`;
+        let stepsHtml = `
+            <div class="steps-title" onclick="this.closest('.bento-steps').classList.toggle('expanded')">
+                <span class="chevron">▶</span>
+                🧠 Agent Reasoning (${data.agent_steps.length} steps)
+            </div>
+            <div class="steps-list">`;
+        data.agent_steps.forEach((step, i) => {
+            stepsHtml += `
+                <div class="step-item">
+                    <span class="step-num">${i + 1}</span>
+                    <div>
+                        <div class="step-node">${escapeHtml(step.node || '')}</div>
+                        <div class="step-action">${escapeHtml(step.action || '')}</div>
+                        <div class="step-result">${escapeHtml(step.result || '')}</div>
                     </div>
                 </div>`;
-        }
-    }
-
-    // Error from SQL execution
-    if (data.error) {
-        html += `
-            <div class="error-text">
-                <span>⚠️ ${escapeHtml(data.error)}</span>
-                <button class="retry-btn" onclick="askQuestion('${escapeForTemplate(data.answer ? '' : 'Retry: ' + data.error)}')"> Retry</button>
-            </div>`;
-    }
-
-    // Follow-up suggestions
-    if (data.follow_ups && data.follow_ups.length > 0) {
-        html += `<div class="follow-ups">`;
-        data.follow_ups.forEach(q => {
-            html += `<button class="follow-up-chip" onclick="askQuestion('${escapeForTemplate(q)}')">${escapeHtml(q)}</button>`;
         });
-        html += `</div>`;
+        stepsHtml += `</div>`;
+        stepsCard.innerHTML = stepsHtml;
+        grid.appendChild(stepsCard);
     }
 
-    html += '</div>';
-    div.innerHTML = html;
-    chatArea.appendChild(div);
-    scrollToBottom();
-
-    // Render chart AFTER DOM insertion
-    if (data.results && data.results.rows && data.results.rows.length > 0) {
-        const chartCanvas = document.getElementById(chartId);
-        if (chartCanvas) {
-            renderChart(chartCanvas, data.results.columns, data.results.rows);
-        }
-    }
-}
-
-function appendErrorDOM(error, originalQuestion) {
-    const div = document.createElement('div');
-    div.className = 'message assistant';
-    div.innerHTML = `
-        <div class="message-avatar">AI</div>
-        <div class="message-content">
-            <div class="error-text">
-                <span>⚠️ ${escapeHtml(error)}</span>
-                <button class="retry-btn" onclick="askQuestion('${escapeForTemplate(originalQuestion)}')">Retry</button>
-            </div>
-        </div>`;
-    chatArea.appendChild(div);
-    scrollToBottom();
-}
-
-function appendTyping() {
-    const div = document.createElement('div');
-    div.className = 'message assistant';
-    div.id = 'typing-msg';
-    div.innerHTML = `
-        <div class="message-avatar">AI</div>
-        <div class="message-content">
-            <div class="message-bubble">
-                <div class="typing-indicator">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
+    // Card 5: SQL (side-by-side with Agent Steps)
+    if (data.sql) {
+        const sqlCard = document.createElement('div');
+        sqlCard.className = `bento-card bento-sql${chartType ? '' : ' no-chart'}`;
+        sqlCard.innerHTML = `
+            <div class="sql-card-header">
+                <span class="sql-card-title">Generated SQL</span>
+                <div class="sql-card-actions">
+                    <button class="copy-btn" onclick="copySQL(this, \`${escapeForTemplate(data.sql)}\`)">Copy</button>
+                    <button class="dl-btn" onclick="downloadSQL(\`${escapeForTemplate(data.sql)}\`)">↓ .sql</button>
                 </div>
             </div>
+            <pre>${highlightSQL(data.sql)}</pre>`;
+        grid.appendChild(sqlCard);
+    }
+
+    // Card 6: Follow-ups
+    if (data.follow_ups && data.follow_ups.length > 0) {
+        const fuCard = document.createElement('div');
+        fuCard.className = 'bento-card bento-followups';
+        fuCard.innerHTML = data.follow_ups.map(q =>
+            `<button class="follow-pill" onclick="askQuestion('${escapeForTemplate(q)}')">${escapeHtml(q)}</button>`
+        ).join('');
+        grid.appendChild(fuCard);
+    }
+
+    // Error from SQL execution (partial)
+    if (data.error && data.answer) {
+        const errCard = document.createElement('div');
+        errCard.className = 'bento-error';
+        errCard.innerHTML = `
+            <span>⚠️ ${escapeHtml(data.error)}</span>
+            <button class="retry-btn" onclick="askQuestion('${escapeForTemplate(data.error)}')">Retry</button>`;
+        grid.appendChild(errCard);
+    }
+
+    responseCanvas.appendChild(grid);
+    scrollToBottom();
+
+    // Render chart after DOM insertion
+    if (chartType) {
+        const canvas = document.getElementById(chartId);
+        if (canvas) renderChart(canvas, data.results.columns, data.results.rows);
+    }
+}
+
+function appendErrorBento(error, originalQuestion) {
+    const div = document.createElement('div');
+    div.className = 'bento-grid';
+    div.innerHTML = `
+        <div class="bento-error">
+            <span>⚠️ ${escapeHtml(error)}</span>
+            <button class="retry-btn" onclick="askQuestion('${escapeForTemplate(originalQuestion)}')">Retry</button>
         </div>`;
-    chatArea.appendChild(div);
+    responseCanvas.appendChild(div);
+    scrollToBottom();
+}
+
+function appendLoading() {
+    const div = document.createElement('div');
+    div.className = 'loading-flag';
+    div.innerHTML = `
+        <div class="flag-dots">
+            <div class="flag-dot"></div><div class="flag-dot"></div><div class="flag-dot"></div>
+            <div class="flag-dot"></div><div class="flag-dot"></div><div class="flag-dot"></div>
+        </div>
+        <span class="loading-text">Querying F1 database...</span>`;
+    responseCanvas.appendChild(div);
     scrollToBottom();
     return div;
 }
 
-function removeTyping(el) {
+function removeElement(el) {
     if (el && el.parentNode) el.parentNode.removeChild(el);
 }
 
@@ -697,19 +696,15 @@ function downloadCSV(tableId) {
 }
 
 
-// ── Copy SQL ────────────────────────────────────────────────
+// ── Copy / Download SQL ─────────────────────────────────────
 function copySQL(btn, sql) {
     navigator.clipboard.writeText(sql).then(() => {
         btn.textContent = '✓ Copied';
         setTimeout(() => btn.textContent = 'Copy', 2000);
         showToast('SQL copied to clipboard', 'success');
-    }).catch(() => {
-        showToast('Failed to copy', 'error');
-    });
+    }).catch(() => showToast('Failed to copy', 'error'));
 }
 
-
-// ── Download SQL ────────────────────────────────────────────
 function downloadSQL(sql) {
     const blob = new Blob([sql], { type: 'application/sql;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -726,16 +721,9 @@ function downloadSQL(sql) {
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-
-    const icons = {
-        success: '✓',
-        error: '✕',
-        info: 'ℹ',
-    };
-
+    const icons = { success: '✓', error: '✕', info: 'ℹ' };
     toast.innerHTML = `<span>${icons[type] || 'ℹ'}</span> ${escapeHtml(message)}`;
     toastContainer.appendChild(toast);
-
     setTimeout(() => {
         if (toast.parentNode) toast.parentNode.removeChild(toast);
     }, 3000);
@@ -754,7 +742,6 @@ function highlightSQL(sql) {
     ];
 
     let result = escaped;
-
     keywords.forEach(kw => {
         const regex = new RegExp(`\\b(${kw})\\b`, 'gi');
         result = result.replace(regex, '<span class="sql-keyword">$1</span>');
@@ -774,11 +761,6 @@ function highlightSQL(sql) {
 
 
 // ── Chart.js Auto-Visualization ─────────────────────────────
-const CHART_COLORS = [
-    '#6C63FF', '#00D2FF', '#FF6B6B', '#FFD93D', '#6BCB77',
-    '#4D96FF', '#FF6F91', '#845EC2', '#FF9671', '#FFC75F',
-];
-
 function detectChartType(columns, rows) {
     if (!rows || rows.length === 0 || rows.length > 50) return null;
     if (columns.length < 2) return null;
@@ -789,11 +771,8 @@ function detectChartType(columns, rows) {
     columns.forEach(col => {
         const values = rows.map(r => r[col]).filter(v => v !== null && v !== undefined);
         const numericCount = values.filter(v => !isNaN(Number(v)) && v !== '').length;
-        if (numericCount > values.length * 0.7) {
-            numCols.push(col);
-        } else {
-            textCols.push(col);
-        }
+        if (numericCount > values.length * 0.7) numCols.push(col);
+        else textCols.push(col);
     });
 
     if (textCols.length === 0 || numCols.length === 0) return null;
@@ -812,38 +791,80 @@ function renderChart(canvas, columns, rows) {
     const chartType = detectChartType(columns, rows);
     if (!chartType) return;
 
+    // Columns that should NOT be plotted as datasets (IDs, keys, years)
+    const skipPatterns = /^(.*id|year|round|number|grid|position_order|position_text)$/i;
+
     const textCols = [];
     const numCols = [];
 
     columns.forEach(col => {
         const values = rows.map(r => r[col]).filter(v => v !== null && v !== undefined);
         const numericCount = values.filter(v => !isNaN(Number(v)) && v !== '').length;
-        if (numericCount > values.length * 0.7) numCols.push(col);
-        else textCols.push(col);
+        if (numericCount > values.length * 0.7) {
+            // Skip ID-like or key columns
+            if (!skipPatterns.test(col)) {
+                numCols.push(col);
+            }
+        } else {
+            textCols.push(col);
+        }
     });
 
-    const labels = rows.map(r => String(r[textCols[0]] ?? ''));
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#a0a0b8' : '#555';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+    // If no plottable numeric columns after filtering, skip chart
+    if (numCols.length === 0) return;
 
-    const datasets = numCols.map((col, i) => {
+    // Limit to top 3 numeric columns for readability
+    const plotCols = numCols.slice(0, 3);
+
+    const labels = rows.map(r => String(r[textCols[0]] ?? ''));
+
+    // Distinct, visually different colors (not all red)
+    const distinctColors = [
+        { bg: '#E1060099', border: '#E10600' },   // F1 Red
+        { bg: '#3B82F699', border: '#3B82F6' },   // Blue
+        { bg: '#10B98199', border: '#10B981' },   // Emerald
+        { bg: '#F59E0B99', border: '#F59E0B' },   // Amber
+        { bg: '#8B5CF699', border: '#8B5CF6' },   // Purple
+    ];
+
+    const pieColors = ['#E10600', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#EF4444'];
+
+    const datasets = plotCols.map((col, i) => {
         const data = rows.map(r => Number(r[col]) || 0);
+        const palette = distinctColors[i % distinctColors.length];
+
+        let bgColor = palette.bg;
+        let borderColor = palette.border;
+
+        if (chartType === 'bar' && plotCols.length === 1) {
+            // Single dataset bar: gradient from red to orange
+            bgColor = data.map((_, idx) => {
+                const ratio = idx / Math.max(data.length - 1, 1);
+                return ratio < 0.5 ? '#E1060099' : '#FF6B3599';
+            });
+            borderColor = data.map((_, idx) => {
+                const ratio = idx / Math.max(data.length - 1, 1);
+                return ratio < 0.5 ? '#E10600' : '#FF6B35';
+            });
+        }
+
         return {
             label: col.replace(/_/g, ' '),
             data: data,
             backgroundColor: chartType === 'pie'
-                ? CHART_COLORS.slice(0, data.length)
-                : CHART_COLORS[i % CHART_COLORS.length] + '99',
+                ? pieColors.slice(0, data.length)
+                : bgColor,
             borderColor: chartType === 'pie'
-                ? '#1a1a2e'
-                : CHART_COLORS[i % CHART_COLORS.length],
+                ? 'rgba(0,0,0,0.3)'
+                : borderColor,
             borderWidth: 2,
             borderRadius: chartType === 'bar' ? 6 : 0,
             tension: 0.4,
             fill: chartType === 'line',
         };
     });
+
+    const textColor = '#9090b0';
 
     new Chart(canvas, {
         type: chartType,
@@ -857,10 +878,10 @@ function renderChart(canvas, columns, rows) {
                     labels: { color: textColor, font: { family: 'Inter', size: 11 } },
                 },
                 tooltip: {
-                    backgroundColor: isDark ? '#1e1e3a' : '#fff',
-                    titleColor: isDark ? '#e0e0f0' : '#333',
-                    bodyColor: isDark ? '#a0a0b8' : '#555',
-                    borderColor: isDark ? 'rgba(108,99,255,0.3)' : '#ddd',
+                    backgroundColor: 'rgba(20, 20, 35, 0.95)',
+                    titleColor: '#e8e8f0',
+                    bodyColor: '#9090b0',
+                    borderColor: 'rgba(225, 6, 0, 0.3)',
                     borderWidth: 1,
                     cornerRadius: 8,
                     padding: 10,
@@ -869,11 +890,11 @@ function renderChart(canvas, columns, rows) {
             scales: chartType !== 'pie' ? {
                 x: {
                     ticks: { color: textColor, font: { size: 10 }, maxRotation: 45 },
-                    grid: { color: gridColor },
+                    grid: { display: false },
                 },
                 y: {
                     ticks: { color: textColor, font: { size: 10 } },
-                    grid: { color: gridColor },
+                    grid: { display: false },
                     beginAtZero: true,
                 },
             } : {},
@@ -895,6 +916,6 @@ function escapeForTemplate(text) {
 
 function scrollToBottom() {
     setTimeout(() => {
-        chatArea.scrollTop = chatArea.scrollHeight;
+        responseCanvas.scrollTop = responseCanvas.scrollHeight;
     }, 50);
 }

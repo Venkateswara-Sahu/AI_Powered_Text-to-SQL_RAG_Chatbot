@@ -13,7 +13,7 @@ from llm.prompt_templates import (
 
 class SQLGenerator:
     """
-    Text-to-SQL engine powered by Groq API.
+    Text-to-SQL RAG engine powered by Groq API.
     Generates SQL from natural language, validates it, and
     synthesizes natural language answers from query results.
     """
