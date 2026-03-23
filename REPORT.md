@@ -29,6 +29,7 @@
 15. [Future Scope](#15-future-scope)
 16. [Conclusion](#16-conclusion)
 17. [References](#17-references)
+18. [Appendix A: Application Screenshots](#appendix-a-application-screenshots)
 
 ---
 
@@ -682,3 +683,25 @@ The cinematic frontend, built with glassmorphism design and a bento-grid layout,
 6. Johnson, J., Douze, M., & Jégou, H. (2019). *"Billion-scale similarity search with GPUs."* IEEE Transactions on Big Data.
 7. Reimers, N. & Gurevych, I. (2019). *"Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks."* EMNLP 2019.
 8. Ergast Developer API. *"Ergast Motor Racing Data."* ergast.com/mrd.
+
+---
+
+## Appendix A: Application Screenshots
+
+### A.1 Landing Page — Welcome Dashboard
+
+The landing page features a **particle.js animated background**, the F1InsightAI logo, **live database statistics** (16 tables, 701,530 records, 131 columns), the active AI model badge (Llama 3.3-70b-versatile), and **suggestion chips** for quick-start queries.
+
+![F1InsightAI Landing Page](docs/screenshots/01_landing_page.png)
+
+### A.2 Query Result — Bento Grid Layout
+
+After asking *"Who has the most race wins?"*, the system displays results in a **bento-grid layout**: a scrollable data table (Hamilton 105, Schumacher 91, Verstappen 63...), **syntax-highlighted SQL** with copy/download buttons, a collapsible **Agent Reasoning** accordion, and **AI-generated follow-up suggestions** as clickable pills.
+
+![Query Result with Bento Grid](docs/screenshots/02_query_result.png)
+
+### A.3 Agent Reasoning — Pipeline Transparency
+
+The expanded **Agent Reasoning** accordion reveals each step of the 6-step pipeline: (1) **classify** — identified as a database query, (2) **retrieve_schema** — RAG found 5,644 chars of relevant schema context, (3) **generate_sql** — LLM generated the SELECT query, (4) **execute_sql** — returned 50 rows successfully, (5) **reflect** — validated results, (6) **generate_answer** — created the natural language summary.
+
+![Agent Reasoning Expanded](docs/screenshots/03_agent_reasoning.png)
