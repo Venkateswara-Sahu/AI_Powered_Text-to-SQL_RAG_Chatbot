@@ -43,34 +43,50 @@ An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural
 User Question
      │
      ▼
-┌─────────────┐     ┌──────────────────┐
-│  Flask API  │────▶│  RAG Retrieval   │
-│  (app.py)   │     │  (FAISS + Schema │
-└──────┬──────┘     │   Embeddings)    │
-       │            └────────┬─────────┘
-       │                     │ Top-K relevant schema
-       ▼                     ▼
-┌──────────────────────────────────┐
-│  LangGraph Agent (Multi-Step)    │
-│  Groq LLM (Llama 3.3 70B)       │
-│  System Prompt + Schema Context  │
-└──────────────┬───────────────────┘
-               │ Generated SQL
-               ▼
-┌──────────────────────────┐
-│   TiDB Cloud (F1 DB)     │
-│   Read-Only Execution    │
-└──────────────┬───────────┘
-               │ Query Results
-               ▼
-┌──────────────────────────┐
-│  LLM Answer Generation   │
-│  (Natural Language)       │
-└──────────────┬───────────┘
-               │
-               ▼
-         Chat Response
-  (Answer + SQL + Table + Chart)
+┌─────────────┐
+│  Flask API  │  (app.py — /api/chat)
+└──────┬──────┘
+       │ + chat history (last 20 msgs)
+       ▼
+┌──────────────────────────────────────────────────────┐
+│         LangGraph Agent (9-node state graph)         │
+│                                                      │
+│  ┌──────────┐                                        │
+│  │ classify │─── "conversation" ──▶ direct_answer ─▶ END │
+│  └────┬─────┘                                        │
+│       │ "database"                                   │
+│       ▼                                              │
+│  ┌─────────────────┐                                 │
+│  │ retrieve_schema │  RAG: FAISS top-5 tables        │
+│  └────────┬────────┘                                 │
+│           ▼                                          │
+│  ┌──────────────┐                                    │
+│  │ generate_sql │  Groq LLM (Llama 3.3 70B)         │
+│  └──────┬───────┘                                    │
+│         ▼                                            │
+│  ┌─────────────┐                                     │
+│  │ execute_sql │  TiDB Cloud (read-only)             │
+│  └──────┬──────┘                                     │
+│         ▼                                            │
+│  ┌─────────┐    ❌ error                              │
+│  │ reflect │───────────▶ retry_sql ──┐               │
+│  └────┬────┘            (up to 2x)   │               │
+│       │ ✅ ok       ◀────────────────┘               │
+│       ▼                                              │
+│  ┌─────────────────┐                                 │
+│  │ generate_answer │  Natural language summary        │
+│  └────────┬────────┘                                 │
+│           ▼                                          │
+│  ┌───────────────────┐                               │
+│  │ generate_follow_  │  3 suggested questions         │
+│  │       ups         │                               │
+│  └────────┬──────────┘                               │
+│           ▼                                          │
+│          END                                         │
+└──────────────────────────────────────────────────────┘
+       │
+       ▼
+ Chat Response (Answer + SQL + Table + Chart + Follow-ups)
 ```
 
 ## 🚀 Setup Guide
@@ -147,27 +163,30 @@ Project/
 ├── .env.example              # Template for environment setup
 │
 ├── agent/
-│   ├── agent.py              # LangGraph agentic SQL pipeline
-│   └── tools.py              # Agent tools (query, schema lookup, etc.)
+│   ├── __init__.py           # Module: LangGraph agentic SQL pipeline
+│   ├── agent.py              # 9-node state graph (classify → retrieve → generate → execute → reflect → answer)
+│   └── tools.py              # Agent tools (schema retrieval, SQL execution, validation)
 │
 ├── database/
-│   ├── connector.py          # MySQL connection pool + safe query execution
-│   ├── chat_store.py         # Server-side conversation storage (rename, pin)
-│   └── schema_dump.txt       # Database schema reference
+│   ├── __init__.py           # Module: MySQL/TiDB connection + chat storage
+│   ├── connector.py          # Connection pool + retry logic + safe query execution
+│   └── chat_store.py         # Server-side conversation CRUD (rename, pin, delete)
 │
 ├── rag/
-│   └── embeddings.py         # FAISS vector index + schema embedding + retrieval
+│   ├── __init__.py           # Module: FAISS vector index + schema retrieval
+│   └── embeddings.py         # Schema embedding (all-MiniLM-L6-v2) + FAISS retrieval
 │
 ├── llm/
-│   ├── prompt_templates.py   # System prompts + few-shot examples + schema
-│   └── sql_generator.py      # Groq LLM — SQL gen, retry, answer gen
+│   ├── __init__.py           # Module: Groq API integration + SQL generation
+│   ├── prompt_templates.py   # System prompts + few-shot examples + F1 domain knowledge
+│   └── sql_generator.py      # Groq LLM calls — SQL gen, auto-retry, answer gen
 │
 ├── templates/
-│   └── index.html            # Chat UI (F1-themed premium design)
+│   └── index.html            # Cinematic Data Interface (particle.js + bento grid)
 │
 ├── static/
-│   ├── css/styles.css        # Dark theme, glassmorphism, micro-animations
-│   └── js/app.js             # Conversation engine + sidebar + exports
+│   ├── css/styles.css        # Glassmorphism dark theme, micro-animations
+│   └── js/app.js             # Chat engine, bento renderer, chart rendering
 │
 ├── Dockerfile                # Container build config
 └── docker-compose.yml        # Multi-service orchestration
