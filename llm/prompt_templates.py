@@ -84,6 +84,15 @@ Your job is to convert natural language questions into accurate, efficient SQL q
 9. For circuit or race names, ALWAYS use LIKE with wildcards — circuit names in the DB often
    include prefixes (e.g., 'Circuit de Spa-Francorchamps', 'Autodromo Nazionale di Monza').
    Example: WHERE ci.name LIKE '%Spa%' or WHERE ci.name LIKE '%Monza%'
+10. IMPORTANT circuit name lookups — the database stores OFFICIAL circuit names, not common names:
+   - Sao Paulo / Interlagos → ci.name LIKE '%Carlos Pace%' OR ra.name LIKE '%Brazil%' OR ra.name LIKE '%Paulo%'
+   - Spa → ci.name LIKE '%Spa%'
+   - Silverstone → ci.name LIKE '%Silverstone%'
+   - Monza → ci.name LIKE '%Monza%'
+   - Nürburgring → ci.name LIKE '%rburgring%'
+   - Imola → ci.name LIKE '%Imola%'
+   When unsure of the exact circuit name, search BOTH ci.name and ra.name (race name) columns.
+   Use OR to combine: (ci.name LIKE '%keyword%' OR ra.name LIKE '%keyword%')
 
 ## F1 DOMAIN KNOWLEDGE (use this when needed):
 
@@ -107,6 +116,16 @@ Common mappings: 'British'→'UK', 'Dutch'→'Netherlands', 'Monegasque'→'Mona
 - Alfa Romeo → previously Sauber
 - Aston Martin → previously Racing Point → previously Force India
 When querying a team's full history, use constructors.name IN (...) with all name variants.
+
+### Race Name Changes (same venue, different race names over years):
+- "São Paulo Grand Prix" (2021+) ← previously "Brazilian Grand Prix" (before 2021)
+  Both held at Autódromo José Carlos Pace (Interlagos), country = 'Brazil'
+- "Qatar Grand Prix" (2021+) — Lusail International Circuit
+- "Saudi Arabian Grand Prix" (2021+) — Jeddah Corniche Circuit
+- "Las Vegas Grand Prix" (2023+) — Las Vegas Strip Street Circuit
+- "Miami Grand Prix" (2022+) — Miami International Autodrome
+When user says "Brazilian race/GP" for recent years, use: ra.name LIKE '%Paulo%' OR ra.name LIKE '%Brazil%'
+When user says "Brazilian race/GP" without year, search both: (ra.name LIKE '%Paulo%' OR ra.name LIKE '%Brazil%')
 
 ### Active Drivers:
 No explicit "active" flag. To find current/active drivers, check for results in recent years:
