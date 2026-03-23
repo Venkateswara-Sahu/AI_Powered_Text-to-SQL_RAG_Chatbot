@@ -105,56 +105,99 @@ LangGraph (by LangChain) provides a framework for building stateful, graph-based
 
 ## 6. System Architecture
 
-```
-User Question
-     │
-     ▼
-┌─────────────┐
-│  Flask API  │  (app.py — /api/chat)
-└──────┬──────┘
-       │ + chat history (last 20 msgs)
-       ▼
-┌──────────────────────────────────────────────────────┐
-│         LangGraph Agent (9-node state graph)         │
-│                                                      │
-│  ┌──────────┐                                        │
-│  │ classify │─── "conversation" ──▶ direct_answer    │
-│  └────┬─────┘                                        │
-│       │ "database"                                   │
-│       ▼                                              │
-│  ┌─────────────────┐                                 │
-│  │ retrieve_schema │  RAG: FAISS top-5 tables        │
-│  └────────┬────────┘                                 │
-│           ▼                                          │
-│  ┌──────────────┐                                    │
-│  │ generate_sql │  Groq LLM (Llama 3.3 70B)         │
-│  └──────┬───────┘                                    │
-│         ▼                                            │
-│  ┌─────────────┐                                     │
-│  │ execute_sql │  TiDB Cloud (read-only)             │
-│  └──────┬──────┘                                     │
-│         ▼                                            │
-│  ┌─────────┐                                         │
-│  │ reflect │───▶ retry_sql (up to 2x) ──┐            │
-│  └────┬────┘                             │            │
-│       │ ✅ ok    ◀───────────────────────┘            │
-│       ▼                                              │
-│  ┌─────────────────┐                                 │
-│  │ generate_answer │  Natural language summary        │
-│  └────────┬────────┘                                 │
-│           ▼                                          │
-│  ┌─────────────────────┐                             │
-│  │ generate_follow_ups │  3 suggested questions       │
-│  └────────┬────────────┘                             │
-│           ▼                                          │
-│          END                                         │
-└──────────────────────────────────────────────────────┘
-       │
-       ▼
- Chat Response (Answer + SQL + Table + Chart + Follow-ups)
+### 6.1 High-Level Architecture
+
+```mermaid
+graph TB
+    subgraph Frontend ["🖥️ Frontend (Browser)"]
+        UI["Cinematic Data Interface<br/>HTML + CSS + JS + particles.js"]
+        BG["Bento Grid Renderer<br/>Chart.js + SQL Highlighter"]
+    end
+
+    subgraph Backend ["⚙️ Flask Backend (app.py)"]
+        API["REST API<br/>/api/chat, /api/conversations"]
+        CS["Chat Store<br/>Conversation CRUD"]
+    end
+
+    subgraph Agent ["🤖 LangGraph Agent (9 nodes)"]
+        CL["1. Classify Intent"]
+        RS["2. Retrieve Schema (RAG)"]
+        GS["3. Generate SQL (LLM)"]
+        EX["4. Execute SQL"]
+        RF["5. Reflect & Validate"]
+        RT["6. Retry SQL"]
+        GA["7. Generate Answer"]
+        GF["8. Generate Follow-ups"]
+        DA["9. Direct Answer"]
+    end
+
+    subgraph RAG ["🧠 RAG Pipeline"]
+        EMB["Sentence-Transformers<br/>all-MiniLM-L6-v2"]
+        FAISS["FAISS Vector Index<br/>16 table embeddings"]
+    end
+
+    subgraph External ["☁️ External Services"]
+        GROQ["Groq API<br/>Llama 3.3 70B"]
+        TIDB[("TiDB Cloud<br/>F1 Database<br/>700K+ rows")]
+    end
+
+    UI -->|User Question| API
+    API -->|Question + History| CL
+    CL -->|Database Query| RS
+    CL -->|Conversation| DA
+    RS -->|Top-5 Tables| GS
+    GS -->|SQL Query| EX
+    EX -->|Results or Error| RF
+    RF -->|Error| RT
+    RT -->|Fixed SQL| EX
+    RF -->|Success| GA
+    GA --> GF
+    GF -->|Response JSON| API
+    DA -->|Response JSON| API
+    API -->|Answer + SQL + Data| BG
+    API <-->|CRUD| CS
+    CS <-->|Read/Write| TIDB
+    RS <-->|Embed + Search| FAISS
+    EMB -->|384-dim vectors| FAISS
+    GS <-->|Prompt + Generate| GROQ
+    GA <-->|Summarize| GROQ
+    EX <-->|Execute SQL| TIDB
 ```
 
-### Data Flow
+### 6.2 LangGraph Agent Flowchart
+
+```mermaid
+flowchart TD
+    START(["User Question"]) --> classify{"classify<br/>Intent Classification"}
+
+    classify -->|"is_database_query = true"| retrieve_schema["retrieve_schema<br/>RAG: FAISS Top-5 Tables"]
+    classify -->|"is_database_query = false"| direct_answer["direct_answer<br/>General/Conversational"]
+
+    retrieve_schema --> generate_sql["generate_sql<br/>Groq LLM → SQL Query"]
+    generate_sql --> execute_sql["execute_sql<br/>TiDB Cloud (Read-Only)"]
+    execute_sql --> reflect{"reflect<br/>Validate Results"}
+
+    reflect -->|"❌ Error & attempts < 2"| retry_sql["retry_sql<br/>Feed error to LLM"]
+    reflect -->|"✅ Success or max retries"| generate_answer["generate_answer<br/>Natural Language Summary"]
+
+    retry_sql --> execute_sql
+
+    generate_answer --> generate_follow_ups["generate_follow_ups<br/>3 Suggested Questions"]
+    generate_follow_ups --> END_DB(["Response<br/>Answer + SQL + Table + Chart + Follow-ups"])
+    direct_answer --> END_CONV(["Response<br/>Conversational Answer"])
+
+    style classify fill:#f59e0b,color:#000
+    style reflect fill:#f59e0b,color:#000
+    style retrieve_schema fill:#3b82f6,color:#fff
+    style generate_sql fill:#8b5cf6,color:#fff
+    style execute_sql fill:#10b981,color:#fff
+    style retry_sql fill:#ef4444,color:#fff
+    style generate_answer fill:#06b6d4,color:#fff
+    style generate_follow_ups fill:#06b6d4,color:#fff
+    style direct_answer fill:#6b7280,color:#fff
+```
+
+### 6.3 Data Flow
 
 1. **User sends a question** via the chat interface → Flask `/api/chat` endpoint
 2. **Chat history** (last 20 messages) is fetched from TiDB Cloud for multi-turn context
@@ -272,7 +315,34 @@ When a user asks a question:
 3. The top-5 most relevant table descriptions are concatenated and injected into the LLM system prompt
 4. The LLM generates SQL using **only the relevant tables**, improving accuracy
 
-### 9.4 Comparison with Standard RAG
+### 9.4 RAG Pipeline Diagram
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Agent
+    participant E as Embedding Model
+    participant F as FAISS Index
+    participant L as Groq LLM
+
+    Note over E,F: Startup (One-time Indexing)
+    A->>E: Encode 16 table schema documents
+    E-->>A: 384-dim vectors (float32)
+    A->>F: Normalize (L2) + Store in IndexFlatIP
+    F-->>A: Index ready (16 vectors)
+
+    Note over U,L: Query Time (Per Question)
+    U->>A: "How many wins does Hamilton have?"
+    A->>E: Encode question
+    E-->>A: Query vector (384-dim)
+    A->>F: Top-5 nearest neighbor search
+    F-->>A: [results, drivers, races, driver_standings, qualifying]
+    A->>L: Question + Top-5 schema docs + Few-shot examples
+    L-->>A: SELECT d.forename, d.surname, COUNT(*) AS wins...
+    A-->>U: SQL + Results + Answer
+```
+
+### 9.5 Comparison with Standard RAG
 
 | Aspect | Standard RAG (OpenRAG) | Schema-RAG (F1InsightAI) |
 |--------|----------------------|--------------------------|
@@ -403,14 +473,131 @@ The F1 database contains 16 tables with 700,000+ rows covering 75 years of racin
 | `status` | Result status codes | status (e.g., 'Finished', 'Engine') |
 | `constructor_results` | Team race results | points, status |
 
-### 12.2 Conversation Storage
+### 12.2 Entity-Relationship Diagram
+
+```mermaid
+erDiagram
+    drivers ||--o{ results : "driverId"
+    drivers ||--o{ qualifying : "driverId"
+    drivers ||--o{ driver_standings : "driverId"
+    drivers ||--o{ lap_times : "driverId"
+    drivers ||--o{ pit_stops : "driverId"
+    drivers ||--o{ sprint_results : "driverId"
+
+    constructors ||--o{ results : "constructorId"
+    constructors ||--o{ qualifying : "constructorId"
+    constructors ||--o{ constructor_standings : "constructorId"
+    constructors ||--o{ constructor_results : "constructorId"
+    constructors ||--o{ sprint_results : "constructorId"
+
+    races ||--o{ results : "raceId"
+    races ||--o{ qualifying : "raceId"
+    races ||--o{ driver_standings : "raceId"
+    races ||--o{ constructor_standings : "raceId"
+    races ||--o{ constructor_results : "raceId"
+    races ||--o{ lap_times : "raceId"
+    races ||--o{ pit_stops : "raceId"
+    races ||--o{ sprint_results : "raceId"
+
+    circuits ||--o{ races : "circuitId"
+    seasons ||--o{ races : "year"
+    status ||--o{ results : "statusId"
+
+    drivers {
+        int driverId PK
+        string forename
+        string surname
+        string nationality
+        date dob
+    }
+    constructors {
+        int constructorId PK
+        string name
+        string nationality
+    }
+    circuits {
+        int circuitId PK
+        string name
+        string location
+        string country
+    }
+    races {
+        int raceId PK
+        int year
+        int round
+        int circuitId FK
+        string name
+        date date
+    }
+    results {
+        int resultId PK
+        int raceId FK
+        int driverId FK
+        int constructorId FK
+        string position
+        float points
+        int laps
+        int statusId FK
+    }
+    qualifying {
+        int qualifyId PK
+        int raceId FK
+        int driverId FK
+        string position
+    }
+    driver_standings {
+        int driverStandingsId PK
+        int raceId FK
+        int driverId FK
+        float points
+        int position
+    }
+    constructor_standings {
+        int constructorStandingsId PK
+        int raceId FK
+        int constructorId FK
+        float points
+        int position
+    }
+    lap_times {
+        int raceId PK
+        int driverId PK
+        int lap PK
+        int milliseconds
+    }
+    pit_stops {
+        int raceId PK
+        int driverId PK
+        int stop PK
+        int milliseconds
+    }
+    sprint_results {
+        int resultId PK
+        int raceId FK
+        int driverId FK
+    }
+    seasons {
+        int year PK
+    }
+    status {
+        int statusId PK
+        string status
+    }
+    constructor_results {
+        int constructorResultsId PK
+        int raceId FK
+        int constructorId FK
+    }
+```
+
+### 12.3 Conversation Storage
 
 Two additional tables manage chat history:
 
 - **`conversations`**: id, title, pinned, created_at, updated_at
 - **`messages`**: id, conversation_id, role (user/assistant), content, data (JSON), timestamp
 
-### 12.3 Domain Knowledge in Prompts
+### 12.4 Domain Knowledge in Prompts
 
 The system prompt includes critical F1-specific knowledge to improve SQL accuracy:
 
