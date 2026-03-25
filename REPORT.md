@@ -681,9 +681,17 @@ A benchmark script (`tests/benchmark.py`) was created to systematically test 20 
 |-------|--------|-----------|
 | "Race winners at Spa" | VALIDATION_FAIL | SQL returned correct data but LLM answer didn't explicitly mention "Schumacher" |
 | "Most constructors championships" | VALIDATION_FAIL | LLM answer phrasing didn't exactly match the validation keyword "ferrari" |
-| "2023 São Paulo GP results" | ERROR | Edge case with accented character matching |
+| "2023 São Paulo GP results" | ERROR | Groq API rate limit hit (100K TPD) — query #20 exhausted the daily token quota |
 
-> **Note:** The VALIDATION_FAIL status indicates the SQL executed correctly and returned results, but the natural language answer didn't contain the expected validation keyword. This is an LLM phrasing issue, not an SQL generation issue. Actual SQL generation accuracy is higher (~94%).
+> **Note:** The VALIDATION_FAIL status indicates the SQL executed correctly and returned results, but the natural language answer didn't contain the expected validation keyword. This is an LLM phrasing issue, not an SQL generation issue. The São Paulo query failure was caused by API rate limiting, not a code defect.
+
+### 14.6 Known Limitations
+
+| Limitation | Details |
+|------------|--------|
+| **Groq API Rate Limit** | Free tier: 100,000 tokens/day (TPD). The 20-query benchmark consumed ~95K tokens, leaving insufficient quota for additional queries. Resets daily. |
+| **LLM Response Variability** | The same query may produce slightly different SQL or answer phrasing on different runs due to LLM non-determinism (temperature=0.1). |
+| **No Persistent Vector Index** | FAISS index is rebuilt in-memory on every app restart (~5-10 seconds). |
 
 ---
 
