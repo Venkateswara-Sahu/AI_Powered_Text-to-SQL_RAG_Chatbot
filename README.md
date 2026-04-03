@@ -11,6 +11,7 @@ An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural
 - **Auto-Retry with Error Feedback** — If a query fails, the agent gets the error and automatically fixes the SQL
 - **Read-Only SQL Enforcement** — Only SELECT queries are allowed; all write operations are blocked
 - **Groq API** — Lightning-fast inference using Llama 3.3 70B (free tier)
+- **RAG Evaluation Metrics** — Live MRR, Recall@K, Context Relevance, and Faithfulness scores displayed per query
 
 ### User Experience
 - **🎬 Cinematic Data Interface** — Particle network background, Omni-Search paradigm, Bento Box results grid
@@ -22,6 +23,7 @@ An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural
 - **CSV Export** — Download any query result table as a `.csv` file
 - **SQL Download** — Download generated SQL as a `.sql` file
 - **Glassmorphism UI** — Frosted-glass cards, staggered cascade animations, responsive design
+- **📊 RAG Evaluation Card** — Live retrieval quality metrics (MRR, Recall@K, Context Relevance, Faithfulness) in the bento grid
 - **🐳 Docker Ready** — Dockerfile + Docker Compose for one-command deployment
 
 ## 🛠️ Tech Stack
@@ -57,7 +59,7 @@ User Question
 │       │ "database"                                   │
 │       ▼                                              │
 │  ┌─────────────────┐                                 │
-│  │ retrieve_schema │  RAG: FAISS top-5 tables        │
+│  │ retrieve_schema │  RAG: FAISS top-7 + co-occurrence  │
 │  └────────┬────────┘                                 │
 │           ▼                                          │
 │  ┌──────────────┐                                    │
@@ -164,8 +166,8 @@ Project/
 │
 ├── agent/
 │   ├── __init__.py           # Module: LangGraph agentic SQL pipeline
-│   ├── agent.py              # 9-node state graph (classify → retrieve → generate → execute → reflect → answer)
-│   └── tools.py              # Agent tools (schema retrieval, SQL execution, validation)
+│   ├── agent.py              # 9-node state graph (classify → retrieve → generate → execute → reflect → answer) + RAG metrics
+│   └── tools.py              # Agent tools (schema retrieval, SQL execution, validation, faithfulness check)
 │
 ├── database/
 │   ├── __init__.py           # Module: MySQL/TiDB connection + chat storage
@@ -174,7 +176,7 @@ Project/
 │
 ├── rag/
 │   ├── __init__.py           # Module: FAISS vector index + schema retrieval
-│   └── embeddings.py         # Schema embedding (all-MiniLM-L6-v2) + FAISS retrieval
+│   └── embeddings.py         # Schema embedding + FAISS retrieval + co-occurrence rules + semantic enrichment
 │
 ├── llm/
 │   ├── __init__.py           # Module: Groq API integration + SQL generation

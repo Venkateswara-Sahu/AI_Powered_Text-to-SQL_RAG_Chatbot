@@ -16,8 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose Flask port
-EXPOSE 5000
+# HF Spaces uses port 7860; local Docker uses 5000
+ENV PORT=7860
+EXPOSE 7860
 
 # Environment
 ENV FLASK_DEBUG=False

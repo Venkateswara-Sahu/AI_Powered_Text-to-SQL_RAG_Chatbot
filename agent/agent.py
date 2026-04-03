@@ -25,6 +25,7 @@ class AgentState(TypedDict):
     question: str
     chat_history: list              # Previous messages for multi-turn
     schema_context: str             # Retrieved from RAG
+    retrieved_tables: list          # Tables retrieved by RAG with scores
     sql: str                        # Generated SQL
     sql_attempts: int               # Retry counter
     execution_result: dict          # From MySQL
@@ -34,6 +35,7 @@ class AgentState(TypedDict):
     agent_steps: list               # Trace of agent reasoning
     error: str                      # Error if any
     is_database_query: bool         # Whether question needs SQL
+    rag_metrics: dict               # RAG evaluation metrics
 
 
 # ── Agent Builder ────────────────────────────────────────────
@@ -247,6 +249,9 @@ class SQLAgent:
 
         context = self.tools.schema_lookup(enriched_query)
 
+        # Get retrieved tables with scores for RAG evaluation
+        retrieved_tables = self.tools.rag.retrieve_with_scores(enriched_query)
+
         step = {
             "node": "retrieve_schema",
             "action": "RAG search for relevant tables",
@@ -255,6 +260,7 @@ class SQLAgent:
 
         return {
             "schema_context": context,
+            "retrieved_tables": retrieved_tables,
             "agent_steps": state.get("agent_steps", []) + [step],
         }
 
@@ -474,6 +480,7 @@ class SQLAgent:
         return {
             "answer": answer,
             "agent_steps": state.get("agent_steps", []) + [step],
+            "rag_metrics": self._compute_rag_metrics(state, answer),
         }
 
     def _generate_follow_ups(self, state: AgentState) -> dict:
@@ -522,6 +529,58 @@ class SQLAgent:
         except Exception:
             return {"follow_ups": []}
 
+    def _compute_rag_metrics(self, state: AgentState, answer: str) -> dict:
+        """Compute RAG evaluation metrics: MRR, Recall@K, Context Relevance, Faithfulness."""
+        sql = state.get("sql", "")
+        retrieved_tables = state.get("retrieved_tables", [])
+        execution_result = state.get("execution_result", {})
+
+        if not sql or not retrieved_tables:
+            return {}
+
+        # Extract table names from SQL (proxy ground truth)
+        tables_in_sql = self.tools.extract_tables_from_sql(sql)
+        retrieved_names = [t["table"] for t in retrieved_tables]
+
+        if not tables_in_sql:
+            return {}
+
+        # ── MRR (Mean Reciprocal Rank) ──
+        # Find the rank of the first SQL-used table in the FAISS results
+        mrr = 0.0
+        for needed_table in tables_in_sql:
+            if needed_table in retrieved_names:
+                rank = retrieved_names.index(needed_table) + 1
+                mrr = 1.0 / rank
+                break  # MRR uses the FIRST relevant result
+
+        # ── Recall@K ──
+        # Of all tables needed by SQL, how many were retrieved?
+        found = [t for t in tables_in_sql if t in retrieved_names]
+        recall_at_k = len(found) / len(tables_in_sql) if tables_in_sql else 0
+        k = len(retrieved_names)
+
+        # ── Context Relevance ──
+        # Of all tables retrieved, how many were actually used in SQL?
+        relevant_retrieved = [t for t in retrieved_names if t in tables_in_sql]
+        context_relevance = len(relevant_retrieved) / len(retrieved_names) if retrieved_names else 0
+
+        # ── Faithfulness ──
+        faithfulness = self.tools.compute_faithfulness(answer, execution_result)
+
+        return {
+            "mrr": round(mrr, 4),
+            "recall_at_k": round(recall_at_k, 4),
+            "k": k,
+            "context_relevance": round(context_relevance, 4),
+            "faithfulness_score": faithfulness["score"],
+            "faithfulness_matched": faithfulness["matched"],
+            "faithfulness_total": faithfulness["total"],
+            "retrieved_tables": retrieved_names,
+            "tables_used_in_sql": tables_in_sql,
+            "tables_found_in_retrieval": found,
+        }
+
     # ── Public API ───────────────────────────────────────────
 
     def run(self, question: str, chat_history: list = None) -> dict:
@@ -542,6 +601,7 @@ class SQLAgent:
             "question": question,
             "chat_history": chat_history or [],
             "schema_context": "",
+            "retrieved_tables": [],
             "sql": "",
             "sql_attempts": 0,
             "execution_result": {},
@@ -551,6 +611,7 @@ class SQLAgent:
             "agent_steps": [],
             "error": "",
             "is_database_query": True,
+            "rag_metrics": {},
         }
 
         try:
@@ -570,6 +631,7 @@ class SQLAgent:
                 "execution_time": elapsed,
                 "follow_ups": final_state.get("follow_ups", []),
                 "agent_steps": final_state.get("agent_steps", []),
+                "rag_metrics": final_state.get("rag_metrics", {}),
                 "error": final_state.get("error") or (result.get("error") if not result.get("success") else None),
             }
 

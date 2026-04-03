@@ -93,6 +93,82 @@ class AgentTools:
         return text
 
     @staticmethod
+    def extract_tables_from_sql(sql: str) -> list[str]:
+        """Extract table names referenced in a SQL query (FROM and JOIN clauses)."""
+        if not sql:
+            return []
+        # Match table names after FROM, JOIN, and their variants
+        pattern = r'(?:FROM|JOIN)\s+`?(\w+)`?'
+        matches = re.findall(pattern, sql, re.IGNORECASE)
+        # Deduplicate while preserving order
+        seen = set()
+        tables = []
+        for t in matches:
+            t_lower = t.lower()
+            if t_lower not in seen:
+                seen.add(t_lower)
+                tables.append(t_lower)
+        return tables
+
+    @staticmethod
+    def compute_faithfulness(answer: str, execution_result: dict) -> dict:
+        """
+        Check if the LLM answer is faithful to the SQL query results.
+        Compares key values from results against the answer text.
+
+        Returns:
+            dict with score (0-1), matched, total, details
+        """
+        if not answer or not execution_result.get("success"):
+            return {"score": 0, "matched": 0, "total": 0, "details": []}
+
+        rows = execution_result.get("rows", [])
+        if not rows:
+            return {"score": 1.0, "matched": 0, "total": 0, "details": []}
+
+        answer_lower = answer.lower()
+
+        # Extract key values from the first few rows of results
+        values_to_check = []
+        for row in rows[:5]:  # Check top 5 rows
+            for key, val in row.items():
+                if val is None:
+                    continue
+                val_str = str(val).strip()
+                if not val_str or len(val_str) < 2:
+                    continue
+                # Skip ID-like columns
+                if key.lower().endswith("id") or key.lower() == "url":
+                    continue
+                values_to_check.append({"column": key, "value": val_str})
+
+        if not values_to_check:
+            return {"score": 1.0, "matched": 0, "total": 0, "details": []}
+
+        # Check each value in the answer
+        matched = 0
+        details = []
+        for item in values_to_check:
+            found = item["value"].lower() in answer_lower
+            if found:
+                matched += 1
+            details.append({
+                "column": item["column"],
+                "value": item["value"],
+                "found": found,
+            })
+
+        total = len(values_to_check)
+        score = round(matched / total, 4) if total > 0 else 1.0
+
+        return {
+            "score": score,
+            "matched": matched,
+            "total": total,
+            "details": details,
+        }
+
+    @staticmethod
     def validate_sql_safety(sql: str) -> tuple:
         """Check SQL is read-only. Returns (is_safe, error)."""
         blocked = [

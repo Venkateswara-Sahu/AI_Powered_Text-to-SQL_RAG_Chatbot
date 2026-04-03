@@ -608,7 +608,43 @@ function appendBentoGrid(data) {
         grid.appendChild(sqlCard);
     }
 
-    // Card 6: Follow-ups
+    // Card 6: RAG Evaluation Metrics
+    if (data.rag_metrics && data.rag_metrics.mrr !== undefined) {
+        const m = data.rag_metrics;
+        const faithIcon = m.faithfulness_score >= 0.8 ? '✅' : m.faithfulness_score >= 0.5 ? '⚠️' : '❌';
+        const faithLabel = m.faithfulness_score >= 0.8 ? 'Faithful' : m.faithfulness_score >= 0.5 ? 'Partial' : 'Unfaithful';
+        const metricsCard = document.createElement('div');
+        metricsCard.className = `bento-card bento-metrics${chartType ? '' : ' no-chart'}`;
+        metricsCard.innerHTML = `
+            <div class="metrics-title">📊 RAG Evaluation</div>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <span class="metric-label">MRR</span>
+                    <span class="metric-value ${m.mrr >= 0.8 ? 'good' : m.mrr >= 0.5 ? 'ok' : 'bad'}">${m.mrr.toFixed(2)}</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Recall@${m.k}</span>
+                    <span class="metric-value ${m.recall_at_k >= 0.8 ? 'good' : m.recall_at_k >= 0.5 ? 'ok' : 'bad'}">${(m.recall_at_k * 100).toFixed(0)}%</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Context Relevance</span>
+                    <span class="metric-value ${m.context_relevance >= 0.5 ? 'good' : m.context_relevance >= 0.3 ? 'ok' : 'bad'}">${(m.context_relevance * 100).toFixed(0)}%</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Faithfulness</span>
+                    <span class="metric-value ${m.faithfulness_score >= 0.8 ? 'good' : m.faithfulness_score >= 0.5 ? 'ok' : 'bad'}">${faithIcon} ${(m.faithfulness_score * 100).toFixed(0)}% (${m.faithfulness_matched}/${m.faithfulness_total})</span>
+                </div>
+            </div>
+            <div class="metrics-detail">
+                <span class="metric-detail-label">Retrieved:</span> ${m.retrieved_tables ? m.retrieved_tables.join(', ') : '-'}
+            </div>
+            <div class="metrics-detail">
+                <span class="metric-detail-label">Used in SQL:</span> ${m.tables_used_in_sql ? m.tables_used_in_sql.join(', ') : '-'}
+            </div>`;
+        grid.appendChild(metricsCard);
+    }
+
+    // Card 7: Follow-ups
     if (data.follow_ups && data.follow_ups.length > 0) {
         const fuCard = document.createElement('div');
         fuCard.className = 'bento-card bento-followups';

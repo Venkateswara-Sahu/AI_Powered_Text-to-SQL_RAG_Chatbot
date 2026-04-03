@@ -43,7 +43,7 @@ The system follows a 3-layer architecture:
 **LangGraph Agent** → A 9-node stateful pipeline:
 
 1. **classify** — Determines if the question needs SQL or is conversational
-2. **retrieve_schema** — RAG retrieves top-5 relevant table schemas from FAISS
+2. **retrieve_schema** — RAG retrieves top-7 relevant table schemas from FAISS + co-occurrence rules inject related tables
 3. **generate_sql** — LLM generates a SQL SELECT query using schema context + F1 domain knowledge
 4. **execute_sql** — Executes on TiDB Cloud (read-only enforced)
 5. **reflect** — Validates results; routes to retry or answer
@@ -59,8 +59,8 @@ The system follows a 3-layer architecture:
 The RAG (Retrieval-Augmented Generation) pipeline ensures the LLM receives only relevant schema context:
 
 - **Indexing (startup):** All 16 table schemas are converted to rich text documents, embedded using all-MiniLM-L6-v2 (384-dim vectors), normalized, and stored in a FAISS IndexFlatIP.
-- **Retrieval (per query):** The user's question is embedded, and FAISS performs a top-5 cosine similarity search to find the most relevant tables.
-- **Augmentation:** The top-5 table descriptions are injected into the LLM system prompt alongside few-shot examples and F1 domain knowledge (team name changes, race name changes, circuit name mappings).
+- **Retrieval (per query):** The user's question is embedded, and FAISS performs a top-7 cosine similarity search. Co-occurrence rules then auto-inject related tables (e.g., `results` → `drivers`, `races` → `circuits`).
+- **Augmentation:** The retrieved table descriptions are injected into the LLM system prompt alongside few-shot examples and F1 domain knowledge (team name changes, race name changes, circuit name mappings).
 
 This approach improves SQL accuracy compared to sending the full 100+ column schema in every prompt.
 
@@ -77,6 +77,7 @@ This approach improves SQL accuracy compared to sending the full 100+ column sch
 - **SQL syntax highlighting** with copy and download buttons
 - **CSV export** for query result tables
 - **F1 domain knowledge** — European countries, team name history, race name changes, circuit name mappings
+- **Live RAG evaluation** — MRR, Recall@K, Context Relevance, Faithfulness displayed per query in the UI
 - **Docker deployment** — one-command setup with Docker Compose
 
 ---
@@ -103,6 +104,26 @@ A benchmark script (`tests/benchmark.py`) tested 20 diverse queries across 9 cat
 
 ---
 
-## 7. Conclusion
+## 7. RAG Evaluation Metrics
 
-F1InsightAI demonstrates the practical application of RAG + agentic LLM pipelines for domain-specific Text-to-SQL tasks. The system achieves high SQL accuracy by retrieving only relevant schema context, handles errors through self-reflection and auto-retry, and presents results in a visually engaging interface. The project combines modern AI techniques (RAG, LangGraph agents, FAISS vector search) with robust engineering (connection pooling, read-only enforcement, Docker deployment) to create a production-quality data exploration tool for Formula 1 enthusiasts.
+Four live metrics are computed per query and displayed in a dedicated bento grid card:
+
+| Metric | What It Measures |
+|--------|-----------------|
+| **MRR** | Rank of first needed table in FAISS results |
+| **Recall@K** | % of SQL-needed tables found in retrieval |
+| **Context Relevance** | Useful tables / total retrieved |
+| **Faithfulness** | SQL result values matched in the LLM answer |
+
+**Three-round iterative improvement** was performed:
+1. **Baseline:** Raw FAISS (MRR avg: 0.12)
+2. **Fix 1:** Excluded system tables + semantic enrichment (MRR avg: 0.25)
+3. **Fix 2:** Co-occurrence rules + top_k=7 + enhanced keywords (MRR avg: **0.67**, 5.5× improvement)
+
+**Key optimizations:** System table exclusion, semantic enrichment keywords, table co-occurrence rules (e.g., `results` → auto-include `drivers`), increased retrieval window from 5 to 7 tables.
+
+---
+
+## 8. Conclusion
+
+F1InsightAI demonstrates the practical application of RAG + agentic LLM pipelines for domain-specific Text-to-SQL tasks. The system achieves high SQL accuracy by retrieving only relevant schema context, handles errors through self-reflection and auto-retry, and presents results in a visually engaging interface. Live RAG evaluation metrics provide transparency into retrieval quality. The project combines modern AI techniques (RAG, LangGraph agents, FAISS vector search) with robust engineering (connection pooling, read-only enforcement, Docker deployment) to create a production-quality data exploration tool for Formula 1 enthusiasts.
