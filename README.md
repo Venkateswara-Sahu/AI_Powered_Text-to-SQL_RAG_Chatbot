@@ -1,3 +1,13 @@
+---
+title: F1InsightAI
+emoji: 🏎️
+colorFrom: red
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 🏎️ F1InsightAI — AI-Powered Formula 1 Text-to-SQL RAG Chatbot
 
 An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural language questions into SQL queries over a comprehensive Formula 1 database (1950–2024) hosted on **TiDB Cloud**. Built with Flask, a LangGraph agentic pipeline, Groq API (Llama 3.3 70B), and FAISS-based RAG for schema-aware SQL generation.
