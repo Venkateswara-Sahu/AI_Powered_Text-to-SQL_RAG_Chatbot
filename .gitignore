@@ -31,3 +31,5 @@ Thumbs.db
 *.sql
 f1-csv/
 f1db-dump/
+
+docs/screenshots/
