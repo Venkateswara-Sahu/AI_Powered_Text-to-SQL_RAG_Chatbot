@@ -910,17 +910,17 @@ body {
 }
 
 .results-table th {
-    background: rgba(225, 6, 0, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 8px 12px;
+    background: rgba(225, 6, 0, 0.12);
+    padding: 10px 12px;
     text-align: left;
     font-weight: 600;
     font-size: 0.7rem;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 2px solid rgba(225, 6, 0, 0.2);
     white-space: nowrap;
+    text-decoration: none;
 }
 
 .results-table td {
