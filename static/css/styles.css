@@ -910,7 +910,7 @@ body {
 }
 
 .results-table th {
-    background: rgba(225, 6, 0, 0.12);
+    background: #1a0a0e;
     padding: 10px 12px;
     text-align: left;
     font-weight: 600;
@@ -918,7 +918,7 @@ body {
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    border-bottom: 2px solid rgba(225, 6, 0, 0.2);
+    border-bottom: 2px solid rgba(225, 6, 0, 0.25);
     white-space: nowrap;
     text-decoration: none;
 }
