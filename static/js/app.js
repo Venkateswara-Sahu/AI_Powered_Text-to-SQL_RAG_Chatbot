@@ -122,25 +122,37 @@ function calmParticles() {
 
 // ── Health Check ────────────────────────────────────────────
 async function checkHealth() {
+    const sbDot = document.getElementById('sbDot');
+    const sbConnection = document.getElementById('sbConnection');
     try {
         const res = await fetch('/api/health');
         const data = await res.json();
         if (data.status === 'healthy') {
             statusDot.className = 'status-dot online';
             statusText.textContent = data.rag_indexed ? data.model : 'Connecting...';
+            // Status bar
+            sbDot.className = 'sb-dot online';
+            sbConnection.textContent = 'Connected to TiDB Cloud';
         } else {
             statusDot.className = 'status-dot error';
             statusText.textContent = 'DB disconnected';
+            sbDot.className = 'sb-dot error';
+            sbConnection.textContent = 'Disconnected';
         }
     } catch {
         statusDot.className = 'status-dot error';
         statusText.textContent = 'Offline';
+        sbDot.className = 'sb-dot error';
+        sbConnection.textContent = 'Offline';
     }
 }
 
 
 // ── Database Stats ──────────────────────────────────────────
 async function loadStats() {
+    const sbModel = document.getElementById('sbModel');
+    const sbTables = document.getElementById('sbTables');
+    const sbRows = document.getElementById('sbRows');
     try {
         const res = await fetch('/api/stats');
         const data = await res.json();
@@ -149,6 +161,10 @@ async function loadStats() {
             statRows.textContent = (data.total_rows || 0).toLocaleString();
             statColumns.textContent = data.total_columns || 0;
             statModel.textContent = data.model || '—';
+            // Status bar
+            sbModel.textContent = `Model: ${data.model || '—'}`;
+            sbTables.textContent = `${data.table_count} tables indexed`;
+            sbRows.textContent = `${(data.total_rows || 0).toLocaleString()} rows`;
         }
     } catch { /* ignore */ }
 }
@@ -507,19 +523,31 @@ function appendBentoGrid(data) {
     const tableId = 'table_' + Date.now();
 
     // Card 1: Answer
+    const faithScore = data.rag_metrics ? data.rag_metrics.faithfulness_score : null;
     let answerHtml = `
         <div class="bento-card bento-answer">
-            <div class="answer-text">${escapeHtml(data.answer || 'No answer generated.')}</div>`;
+            <div class="answer-text">${escapeHtml(data.answer || 'No answer generated.')}</div>
+            <div class="answer-badges">`;
     if (data.execution_time) {
         answerHtml += `
-            <div class="exec-badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-                ${data.execution_time}s
-            </div>`;
+                <div class="exec-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    ${data.execution_time}s
+                </div>`;
     }
-    answerHtml += `</div>`;
+    if (faithScore !== null && faithScore !== undefined) {
+        const confCls = faithScore >= 0.8 ? 'good' : faithScore >= 0.5 ? 'ok' : 'bad';
+        answerHtml += `
+                <div class="confidence-badge ${confCls}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    Confidence: ${(faithScore * 100).toFixed(0)}%
+                </div>`;
+    }
+    answerHtml += `</div></div>`;
     grid.innerHTML = answerHtml;
 
     // Card 2: Chart (if applicable)
@@ -608,32 +636,36 @@ function appendBentoGrid(data) {
         grid.appendChild(sqlCard);
     }
 
-    // Card 6: RAG Evaluation Metrics
+    // Card 6: RAG Evaluation Metrics (Progress Bar Style)
     if (data.rag_metrics && data.rag_metrics.mrr !== undefined) {
         const m = data.rag_metrics;
         const faithIcon = m.faithfulness_score >= 0.8 ? '✅' : m.faithfulness_score >= 0.5 ? '⚠️' : '❌';
-        const faithLabel = m.faithfulness_score >= 0.8 ? 'Faithful' : m.faithfulness_score >= 0.5 ? 'Partial' : 'Unfaithful';
         const metricsCard = document.createElement('div');
         metricsCard.className = `bento-card bento-metrics${chartType ? '' : ' no-chart'}`;
+
+        const makeBar = (label, value, max = 1.0, thresholds = [0.8, 0.5]) => {
+            const pct = Math.min((value / max) * 100, 100);
+            const cls = value >= thresholds[0] ? 'good' : value >= thresholds[1] ? 'ok' : 'bad';
+            const display = max === 1.0 ? value.toFixed(2) : (value * 100).toFixed(0) + '%';
+            return `
+                <div class="metric-bar-item">
+                    <div class="metric-bar-header">
+                        <span class="metric-bar-label">${label}</span>
+                        <span class="metric-bar-value ${cls}">${display}</span>
+                    </div>
+                    <div class="metric-bar-track">
+                        <div class="metric-bar-fill ${cls}" style="width: ${pct}%"></div>
+                    </div>
+                </div>`;
+        };
+
         metricsCard.innerHTML = `
             <div class="metrics-title">📊 RAG Evaluation</div>
-            <div class="metrics-grid">
-                <div class="metric-item">
-                    <span class="metric-label">MRR</span>
-                    <span class="metric-value ${m.mrr >= 0.8 ? 'good' : m.mrr >= 0.5 ? 'ok' : 'bad'}">${m.mrr.toFixed(2)}</span>
-                </div>
-                <div class="metric-item">
-                    <span class="metric-label">Recall@${m.k}</span>
-                    <span class="metric-value ${m.recall_at_k >= 0.8 ? 'good' : m.recall_at_k >= 0.5 ? 'ok' : 'bad'}">${(m.recall_at_k * 100).toFixed(0)}%</span>
-                </div>
-                <div class="metric-item">
-                    <span class="metric-label">Context Relevance</span>
-                    <span class="metric-value ${m.context_relevance >= 0.5 ? 'good' : m.context_relevance >= 0.3 ? 'ok' : 'bad'}">${(m.context_relevance * 100).toFixed(0)}%</span>
-                </div>
-                <div class="metric-item">
-                    <span class="metric-label">Faithfulness</span>
-                    <span class="metric-value ${m.faithfulness_score >= 0.8 ? 'good' : m.faithfulness_score >= 0.5 ? 'ok' : 'bad'}">${faithIcon} ${(m.faithfulness_score * 100).toFixed(0)}% (${m.faithfulness_matched}/${m.faithfulness_total})</span>
-                </div>
+            <div class="metrics-bars">
+                ${makeBar('MRR (Mean Reciprocal Rank)', m.mrr, 1.0, [0.8, 0.5])}
+                ${makeBar('Recall@' + m.k, m.recall_at_k, 1.0, [0.8, 0.5])}
+                ${makeBar('Context Relevance', m.context_relevance, 1.0, [0.5, 0.3])}
+                ${makeBar('Faithfulness', m.faithfulness_score, 1.0, [0.8, 0.5])}
             </div>
             <div class="metrics-detail">
                 <span class="metric-detail-label">Retrieved:</span> ${m.retrieved_tables ? m.retrieved_tables.join(', ') : '-'}
