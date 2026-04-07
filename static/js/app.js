@@ -200,6 +200,7 @@ newChatBtn.addEventListener('click', () => {
     isDocked = false;
     appShell.classList.remove('docked');
     responseCanvas.innerHTML = '';
+    renderChatList();
     closeDrawer();
     userInput.focus();
 });
