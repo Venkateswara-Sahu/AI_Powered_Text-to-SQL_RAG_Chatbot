@@ -39,6 +39,78 @@ let isDocked = false;
 let particlesInstance = null;
 
 
+// ── Typewriter Effect ───────────────────────────────────────
+function typeWriter(el, text, speed = 50, delay = 0) {
+    el.textContent = '';
+    el.style.opacity = '1';
+    let i = 0;
+    setTimeout(() => {
+        const type = () => {
+            if (i < text.length) {
+                el.textContent += text.charAt(i);
+                i++;
+                setTimeout(type, speed);
+            } else {
+                el.classList.add('typed-done');
+            }
+        };
+        type();
+    }, delay);
+}
+
+// ── Rotating Placeholder Typewriter ─────────────────────────
+function initPlaceholderCycle(input) {
+    const phrases = [
+        'Who has the most race wins?',
+        'Compare Hamilton vs Verstappen stats...',
+        'Show me the 2023 race calendar',
+        'Average pit stop duration by team',
+        'Which circuit has the most overtakes?',
+        'Top 5 fastest lap times at Monza',
+        'How many championships does Ferrari have?',
+    ];
+    let phraseIdx = 0;
+    let charIdx = 0;
+    let isDeleting = false;
+    let isPaused = false;
+
+    function tick() {
+        if (isPaused || document.activeElement === input) {
+            setTimeout(tick, 200);
+            return;
+        }
+
+        const current = phrases[phraseIdx];
+
+        if (!isDeleting) {
+            input.setAttribute('placeholder', current.substring(0, charIdx + 1));
+            charIdx++;
+            if (charIdx === current.length) {
+                isDeleting = true;
+                setTimeout(tick, 2000); // pause at full text
+                return;
+            }
+            setTimeout(tick, 60);
+        } else {
+            input.setAttribute('placeholder', current.substring(0, charIdx));
+            charIdx--;
+            if (charIdx === 0) {
+                isDeleting = false;
+                phraseIdx = (phraseIdx + 1) % phrases.length;
+                setTimeout(tick, 400); // pause before next phrase
+                return;
+            }
+            setTimeout(tick, 30);
+        }
+    }
+
+    // Pause cycle when user focuses input
+    input.addEventListener('focus', () => { isPaused = true; input.setAttribute('placeholder', 'Ask about F1...'); });
+    input.addEventListener('blur', () => { if (!input.value) isPaused = false; });
+
+    setTimeout(tick, 1500); // start after page loads
+}
+
 // ── Initialize ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initParticles();
@@ -46,6 +118,17 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStats();
     loadConversations();
     autoResizeTextarea();
+
+    // Typewriter on subtitle after entrance animation
+    const subtitle = document.querySelector('.hero-subtitle');
+    if (subtitle) {
+        const text = subtitle.dataset.text || subtitle.textContent;
+        subtitle.textContent = '';
+        typeWriter(subtitle, text, 40, 600);
+    }
+
+    // Rotating placeholder in search box
+    initPlaceholderCycle(userInput);
 });
 
 
@@ -148,6 +231,21 @@ async function checkHealth() {
 }
 
 
+// ── Animated Counter ────────────────────────────────────────
+function animateCount(el, target, duration = 1500, format = null) {
+    const start = performance.now();
+    const step = (now) => {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutExpo
+        const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+        const current = Math.round(ease * target);
+        el.textContent = format ? format(current) : current;
+        if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
 // ── Database Stats ──────────────────────────────────────────
 async function loadStats() {
     const sbModel = document.getElementById('sbModel');
@@ -157,9 +255,10 @@ async function loadStats() {
         const res = await fetch('/api/stats');
         const data = await res.json();
         if (data.table_count !== undefined) {
-            statTables.textContent = data.table_count;
-            statRows.textContent = (data.total_rows || 0).toLocaleString();
-            statColumns.textContent = data.total_columns || 0;
+            // Animated counting for hero stats
+            animateCount(statTables, data.table_count, 1000);
+            animateCount(statRows, data.total_rows || 0, 1800, n => n.toLocaleString());
+            animateCount(statColumns, data.total_columns || 0, 1200);
             statModel.textContent = data.model || '—';
             // Status bar
             sbModel.textContent = `Model: ${data.model || '—'}`;

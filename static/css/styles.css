@@ -412,6 +412,15 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 12px;
+    animation: heroFadeIn 0.8s ease forwards;
+}
+.hero-logo svg {
+    filter: drop-shadow(0 0 20px rgba(225, 6, 0, 0.4));
+    animation: logoGlow 3s ease-in-out infinite;
+}
+@keyframes logoGlow {
+    0%, 100% { filter: drop-shadow(0 0 15px rgba(225, 6, 0, 0.3)); }
+    50% { filter: drop-shadow(0 0 30px rgba(225, 6, 0, 0.6)) drop-shadow(0 0 60px rgba(255, 107, 53, 0.2)); }
 }
 
 .hero-title {
@@ -421,9 +430,12 @@ body {
     color: var(--text-primary);
     letter-spacing: -0.03em;
     line-height: 1.1;
+    opacity: 0;
+    animation: heroSlideUp 0.7s ease forwards 0.2s;
 }
 .hero-title .accent {
     color: var(--accent-primary);
+    text-shadow: 0 0 30px rgba(225, 6, 0, 0.4);
 }
 
 .hero-subtitle {
@@ -431,6 +443,23 @@ body {
     color: var(--text-muted);
     font-weight: 400;
     letter-spacing: 0.03em;
+    opacity: 0;
+    animation: heroSlideUp 0.7s ease forwards 0.4s;
+    min-height: 1.4em;
+}
+.hero-subtitle::after {
+    content: '|';
+    color: var(--accent-primary);
+    font-weight: 300;
+    animation: cursorBlink 0.8s step-end infinite;
+    margin-left: 2px;
+}
+.hero-subtitle.typed-done::after {
+    display: none;
+}
+@keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
 }
 
 /* Hero Stats */
@@ -439,6 +468,8 @@ body {
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
+    opacity: 0;
+    animation: heroSlideUp 0.7s ease forwards 0.6s;
 }
 
 .hero-stat {
@@ -453,6 +484,13 @@ body {
     border: 1px solid var(--glass-border);
     border-radius: 50px;
     min-width: 90px;
+    transition: all var(--transition-normal);
+    cursor: default;
+}
+.hero-stat:hover {
+    border-color: rgba(225, 6, 0, 0.3);
+    box-shadow: 0 0 20px rgba(225, 6, 0, 0.1), inset 0 0 20px rgba(225, 6, 0, 0.03);
+    transform: translateY(-3px);
 }
 .hero-stat-value {
     font-family: var(--font-heading);
@@ -474,6 +512,18 @@ body {
     flex-wrap: wrap;
     justify-content: center;
     max-width: 600px;
+    opacity: 0;
+    animation: heroSlideUp 0.7s ease forwards 0.8s;
+}
+
+/* ── Hero Entrance Animations ────────────────────────────── */
+@keyframes heroFadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes heroSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .hero-chip {
