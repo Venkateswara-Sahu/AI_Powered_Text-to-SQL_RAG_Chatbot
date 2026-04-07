@@ -1107,6 +1107,11 @@ body {
 .sb-dot.online {
     background: #4ade80;
     box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+    animation: sbPulse 2s ease-in-out infinite;
+}
+@keyframes sbPulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(74, 222, 128, 0.5); }
+    50% { opacity: 0.4; box-shadow: 0 0 2px rgba(74, 222, 128, 0.2); }
 }
 .sb-dot.error {
     background: #f87171;
