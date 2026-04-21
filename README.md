@@ -24,11 +24,14 @@ An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural
 - **RAG Evaluation Metrics** — Live MRR, Recall@K, Context Relevance, and Faithfulness scores displayed per query
 
 ### User Experience
-- **🎬 Cinematic Data Interface** — Particle network background, Omni-Search paradigm, Bento Box results grid
+- **🎬 Cinematic "Kinetic Cockpit" Interface** — tsParticles network background, mouse-following spotlight, telemetry grid overlay, 3D card tilt on hover
 - **📊 Auto Chart Visualizations** — Bar, pie, and line charts auto-generated with distinct F1-themed colors
 - **💡 AI Follow-up Suggestions** — LLM-generated follow-up questions appear as clickable pill chips
 - **📌 Pin & Rename Chats** — Pin important conversations and rename them for easy reference
+- **⋮ ChatGPT-Style Three-Dot Menu** — Hover to reveal dots, click for dropdown with Rename/Pin/Delete
 - **🧠 Agent Reasoning** — Collapsible accordion showing each step of the AI's thinking process
+- **✨ Rotating Conic Border** — Animated glow effect on the search input using `@property` CSS
+- **🎯 Animated Hero Title** — Multi-stop gradient animation with flowing color effect
 - **SQL Syntax Highlighting** — Color-coded keywords in a dark IDE-style card
 - **CSV Export** — Download any query result table as a `.csv` file
 - **SQL Download** — Download generated SQL as a `.sql` file
@@ -194,11 +197,11 @@ Project/
 │   └── sql_generator.py      # Groq LLM calls — SQL gen, auto-retry, answer gen
 │
 ├── templates/
-│   └── index.html            # Cinematic Data Interface (particle.js + bento grid)
+│   └── index.html            # Cinematic Data Interface (tsParticles + bento grid + spotlight + grid overlay)
 │
 ├── static/
-│   ├── css/styles.css        # Glassmorphism dark theme, micro-animations
-│   └── js/app.js             # Chat engine, bento renderer, chart rendering
+│   ├── css/styles.css        # Glassmorphism dark theme, cinematic effects (spotlight, grid, conic border, 3D tilt)
+│   └── js/app.js             # Chat engine, bento renderer, chart rendering, three-dot menu, card tilt
 │
 ├── Dockerfile                # Container build config
 └── docker-compose.yml        # Multi-service orchestration

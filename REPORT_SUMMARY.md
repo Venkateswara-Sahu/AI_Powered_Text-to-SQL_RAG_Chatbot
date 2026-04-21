@@ -36,7 +36,7 @@ F1InsightAI is an AI-powered chatbot that allows users to query a comprehensive 
 
 The system follows a 3-layer architecture:
 
-**Frontend** → Cinematic dark UI with particle background, glassmorphism cards, and a bento-grid results layout.
+**Frontend** → "Kinetic Cockpit" cinematic dark UI with tsParticles background, mouse-following spotlight, telemetry grid overlay, 3D card tilt, glassmorphism cards, rotating conic border on search, and a bento-grid results layout.
 
 **Flask API** → REST endpoints for chat, conversations (CRUD, pin, rename), health check, and database stats.
 
@@ -73,12 +73,24 @@ This approach improves SQL accuracy compared to sending the full 100+ column sch
 - **Multi-turn context** (last 20 messages for pronoun resolution and follow-ups)
 - **Auto-generated charts** (bar, pie, line) with smart column filtering
 - **Conversation management** — create, rename, pin, delete chats (server-side storage)
+- **ChatGPT-style three-dot menu** — hover to reveal ⋮ dots, click for dropdown with Rename/Pin/Delete
 - **Agent reasoning transparency** — collapsible accordion showing each pipeline step
 - **SQL syntax highlighting** with copy and download buttons
 - **CSV export** for query result tables
 - **F1 domain knowledge** — European countries, team name history, race name changes, circuit name mappings
 - **Live RAG evaluation** — MRR, Recall@K, Context Relevance, Faithfulness displayed per query in the UI
 - **Docker deployment** — one-command setup with Docker Compose
+
+### Cinematic Visual Effects ("Kinetic Cockpit" Design)
+
+- **Mouse-following spotlight** — 800px radial gradient tracking cursor movement
+- **Telemetry grid overlay** — persistent 40×40px CSS grid with red lines at 2% opacity
+- **Rotating conic border** — `@property`-animated glow effect on the search input
+- **3D card tilt on hover** — `MutationObserver`-backed perspective transform on result cards
+- **Animated hero title** — multi-stop gradient animation with `-webkit-background-clip: text`
+- **tsParticles network** — F1-themed red/orange connected particle background
+- **Responsive search dock** — 60% viewport width, adapts from centered hero to fixed bottom bar
+- **Fixed status bar** — real-time connection, model, table count, and row count display
 
 ---
 
@@ -126,4 +138,4 @@ Four live metrics are computed per query and displayed in a dedicated bento grid
 
 ## 8. Conclusion
 
-F1InsightAI demonstrates the practical application of RAG + agentic LLM pipelines for domain-specific Text-to-SQL tasks. The system achieves high SQL accuracy by retrieving only relevant schema context, handles errors through self-reflection and auto-retry, and presents results in a visually engaging interface. Live RAG evaluation metrics provide transparency into retrieval quality. The project combines modern AI techniques (RAG, LangGraph agents, FAISS vector search) with robust engineering (connection pooling, read-only enforcement, Docker deployment) to create a production-quality data exploration tool for Formula 1 enthusiasts.
+F1InsightAI demonstrates the practical application of RAG + agentic LLM pipelines for domain-specific Text-to-SQL tasks. The system achieves high SQL accuracy by retrieving only relevant schema context, handles errors through self-reflection and auto-retry, and presents results in a visually engaging "Kinetic Cockpit" interface with cinematic effects (mouse spotlight, telemetry grid, 3D card tilt, rotating conic border, animated hero title). The ChatGPT-style three-dot dropdown menu, conversation pinning, and server-side storage provide a polished chat management experience. Live RAG evaluation metrics provide transparency into retrieval quality. The project combines modern AI techniques (RAG, LangGraph agents, FAISS vector search) with robust engineering (connection pooling, read-only enforcement, Docker deployment) to create a production-quality data exploration tool for Formula 1 enthusiasts.

@@ -39,6 +39,45 @@ let isDocked = false;
 let particlesInstance = null;
 
 
+// ── Mouse-Following Spotlight ───────────────────────────────
+(function() {
+    const spotlight = document.getElementById('mouseSpotlight');
+    if (!spotlight) return;
+    document.addEventListener('mousemove', (e) => {
+        spotlight.style.setProperty('--mx', e.clientX + 'px');
+        spotlight.style.setProperty('--my', e.clientY + 'px');
+    });
+})();
+
+// ── 3D Card Tilt on Hover ───────────────────────────────────
+function initCardTilt(card) {
+    card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const rotateX = ((y - centerY) / centerY) * -5;
+        const rotateY = ((x - centerX) / centerX) * 5;
+        card.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.01)`;
+    });
+    card.addEventListener('mouseleave', () => {
+        card.style.transform = 'perspective(800px) rotateX(0) rotateY(0) scale(1)';
+    });
+}
+// Auto-apply tilt to any new bento cards via MutationObserver
+const tiltObserver = new MutationObserver((mutations) => {
+    mutations.forEach((m) => {
+        m.addedNodes.forEach((node) => {
+            if (node.nodeType === 1) {
+                node.querySelectorAll?.('.bento-card')?.forEach(initCardTilt);
+                if (node.classList?.contains('bento-card')) initCardTilt(node);
+            }
+        });
+    });
+});
+tiltObserver.observe(document.body, { childList: true, subtree: true });
+
 // ── Typewriter Effect ───────────────────────────────────────
 function typeWriter(el, text, speed = 50, delay = 0) {
     el.textContent = '';
@@ -425,6 +464,22 @@ async function pinChat(id, e) {
     } catch { showToast('Failed to pin', 'error'); }
 }
 
+// ── Three-dot Menu Toggle ───────────────────────────────────
+function toggleChatMenu(chatId, e) {
+    e.stopPropagation();
+    // Close all other menus first
+    document.querySelectorAll('.chat-dropdown.open').forEach(m => {
+        if (m.id !== `chatMenu-${chatId}`) m.classList.remove('open');
+    });
+    const menu = document.getElementById(`chatMenu-${chatId}`);
+    if (menu) menu.classList.toggle('open');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', () => {
+    document.querySelectorAll('.chat-dropdown.open').forEach(m => m.classList.remove('open'));
+});
+
 
 // ── Render Chat List ────────────────────────────────────────
 function renderChatList() {
@@ -478,19 +533,21 @@ function renderChatList() {
                 <div class="chat-item-content">
                     <div class="chat-item-title">${pinIcon}${escapeHtml(chat.title)}</div>
                 </div>
-                <div class="chat-item-actions">
-                    <button class="chat-item-action" onclick="pinChat('${chat.id}', event)" title="${pinTitle}">
+                <button class="chat-dots-btn" onclick="toggleChatMenu('${chat.id}', event)" title="Options">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                </button>
+                <div class="chat-dropdown" id="chatMenu-${chat.id}">
+                    <button class="chat-dropdown-item" onclick="renameChat('${chat.id}', event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Rename
+                    </button>
+                    <button class="chat-dropdown-item" onclick="pinChat('${chat.id}', event)">
                         ${pinSvg}
+                        ${pinTitle}
                     </button>
-                    <button class="chat-item-action" onclick="renameChat('${chat.id}', event)" title="Rename">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                    </button>
-                    <button class="chat-item-action delete" onclick="deleteChat('${chat.id}', event)" title="Delete">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        </svg>
+                    <button class="chat-dropdown-item delete" onclick="deleteChat('${chat.id}', event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        Delete
                     </button>
                 </div>
             </div>`;

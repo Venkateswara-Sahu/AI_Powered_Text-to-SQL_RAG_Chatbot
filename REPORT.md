@@ -111,8 +111,9 @@ LangGraph (by LangChain) provides a framework for building stateful, graph-based
 ```mermaid
 graph TB
     subgraph Frontend ["🖥️ Frontend (Browser)"]
-        UI["Cinematic Data Interface<br/>HTML + CSS + JS + particles.js"]
+        UI["Cinematic Data Interface<br/>HTML + CSS + JS + tsParticles"]
         BG["Bento Grid Renderer<br/>Chart.js + SQL Highlighter"]
+        FX["Cinematic Effects<br/>Spotlight + Grid + 3D Tilt + Glow Border"]
     end
 
     subgraph Backend ["⚙️ Flask Backend (app.py)"]
@@ -171,7 +172,7 @@ graph TB
 flowchart TD
     START(["User Question"]) --> classify{"classify<br/>Intent Classification"}
 
-    classify -->|"is_database_query = true"| retrieve_schema["retrieve_schema<br/>RAG: FAISS Top-5 Tables"]
+    classify -->|"is_database_query = true"| retrieve_schema["retrieve_schema<br/>RAG: FAISS Top-7 Tables"]
     classify -->|"is_database_query = false"| direct_answer["direct_answer<br/>General/Conversational"]
 
     retrieve_schema --> generate_sql["generate_sql<br/>Groq LLM → SQL Query"]
@@ -219,7 +220,7 @@ flowchart TD
 | Vector Store | FAISS (Facebook AI Similarity Search) | Optimized for fast similarity search, no external server needed |
 | Database | TiDB Cloud (MySQL-compatible) | Serverless, free tier, cloud-hosted, SSL-encrypted |
 | Charts | Chart.js | Client-side rendering, supports bar/pie/line charts |
-| Frontend | Vanilla HTML/CSS/JS + particles.js | Full control over cinematic design, no framework overhead |
+| Frontend | Vanilla HTML/CSS/JS + tsParticles | Full control over cinematic design, no framework overhead |
 | Deployment | Docker + Docker Compose | One-command deployment, reproducible environments |
 
 ---
@@ -249,9 +250,9 @@ Project/
 │   ├── prompt_templates.py   # System prompts + F1 domain knowledge
 │   └── sql_generator.py      # Groq LLM calls — SQL gen + answer gen
 │
-├── templates/index.html      # Cinematic Data Interface
-├── static/css/styles.css     # Glassmorphism dark theme
-├── static/js/app.js          # Chat engine + bento grid renderer
+├── templates/index.html      # Cinematic Data Interface (tsParticles + spotlight + grid overlay)
+├── static/css/styles.css     # Glassmorphism dark theme, cinematic effects (spotlight, grid, conic border, 3D tilt)
+├── static/js/app.js          # Chat engine, bento renderer, chart rendering, three-dot menu, card tilt
 │
 ├── Dockerfile                # Container build config
 └── docker-compose.yml        # Multi-service orchestration
@@ -416,16 +417,47 @@ The system fetches the **last 20 messages** from the conversation before running
 
 ### 11.1 Design Philosophy
 
-The frontend follows a **"Cinematic Data Interface"** paradigm, featuring:
+The frontend follows a **"Kinetic Cockpit"** design paradigm — a cinematic, F1-inspired interface that feels alive and responds to user interaction. The design layers multiple visual effects to create an immersive data exploration experience:
 
-- **Particle.js** animated network background — creates depth and dynamism
-- **Omni-Search** — single centered search bar that transforms into a results canvas
+- **tsParticles** animated network background — creates depth and dynamism with F1-themed red/orange particles
+- **Omni-Search** — single centered search bar that transforms into a docked bottom bar when results appear
 - **Bento Box Grid** — results are displayed in staggered, animated glass cards
 - **Glassmorphism** — frosted-glass cards with `backdrop-filter: blur(20px)`
 
-### 11.2 Bento Grid Cards
+### 11.2 Cinematic Visual Effects
 
-Each response renders up to 6 cards:
+Six premium visual effects work together to create the "Kinetic Cockpit" aesthetic:
+
+| Effect | Implementation | Purpose |
+|--------|---------------|--------|
+| **Mouse-Following Spotlight** | `radial-gradient` (800px radius, orange/red tints) tracking cursor via `mousemove` event | Creates a high-tech, immersive feel |
+| **Telemetry Grid Overlay** | Persistent CSS grid overlay (40×40px cells, red lines at 2% opacity) | Enhances the "cockpit HUD" aesthetic |
+| **Rotating Conic Border** | `@property`-animated `conic-gradient` border on the search input | Premium search bar glow effect |
+| **3D Card Tilt** | `MutationObserver`-backed `perspective(800px)` transform on hover | Tactile depth feedback on result cards |
+| **Animated Hero Title** | Multi-stop gradient animation with `-webkit-background-clip: text` | Flowing color effect on the logo |
+| **Particle Network** | tsParticles with F1-themed colors (`#E10600`, `#FF6B35`, `#ff4444`) | Living background with connected nodes |
+
+```mermaid
+graph LR
+    subgraph Visual_Layer ["Visual Effects Stack"]
+        P["tsParticles<br/>Background Network"] --> G["Telemetry Grid<br/>40px CSS Overlay"]
+        G --> S["Mouse Spotlight<br/>800px Radial Gradient"]
+        S --> T["3D Card Tilt<br/>MutationObserver + perspective"]
+        T --> B["Conic Border Glow<br/>@property Rotation"]
+        B --> H["Gradient Hero Title<br/>Animated text-clip"]
+    end
+
+    style P fill:#E10600,color:#fff
+    style G fill:#1a1a2e,color:#fff
+    style S fill:#FF6B35,color:#fff
+    style T fill:#8b5cf6,color:#fff
+    style B fill:#f59e0b,color:#000
+    style H fill:#06b6d4,color:#fff
+```
+
+### 11.3 Bento Grid Cards
+
+Each response renders up to 7 cards:
 
 | Card | Span | Content |
 |------|------|---------|
@@ -437,7 +469,7 @@ Each response renders up to 6 cards:
 | RAG Metrics | 12 cols | MRR, Recall@K, Context Relevance, Faithfulness (color-coded) |
 | Follow-ups | 12 cols | Clickable pill buttons for suggested next questions |
 
-### 11.3 Smart Chart Generation
+### 11.4 Smart Chart Generation
 
 The chart system automatically:
 1. Classifies data as bar, pie, or line chart based on data shape
@@ -445,13 +477,49 @@ The chart system automatically:
 3. Uses **distinct colors** (Red, Blue, Emerald, Amber, Purple) for multi-dataset charts
 4. Limits to 3 datasets maximum for readability
 
-### 11.4 Conversation Management
+### 11.5 Responsive Search Dock
 
-- **Create/Load/Delete** conversations
-- **Pin/Unpin** — pinned chats stay at top; unpinned return to chronological position
+The search input adapts between two states:
+
+- **Hero State (landing):** Centered vertically with the animated conic-gradient border, 60% viewport width, rotating typewriter placeholder cycling through 7 F1 queries
+- **Docked State (results):** Fixed to the bottom of the viewport with 36px bottom padding to clear the status bar, maintaining the same width and glow effect
+
+### 11.6 Conversation Management — Three-Dot Menu
+
+The history sidebar uses a ChatGPT-style **three-dot dropdown menu** for chat actions:
+
+- A **⋮ vertical dots button** appears on hover over each chat item
+- Clicking the dots opens a **glassmorphic dropdown** with animated entry (`translateY + scale`)
 - **Rename** — inline editing with click-to-position cursor support
+- **Pin/Unpin** — pinned chats stay at top with a 📌 icon; unpinned return to chronological position
+- **Delete** — red-highlighted destructive action with confirmation dialog
+- **Click outside** — closes the dropdown automatically
 - **Copy question** — hover-reveal copy button on user messages
 - All conversations are stored **server-side** in TiDB Cloud (persists across restarts)
+
+```mermaid
+flowchart LR
+    H["Hover Chat Item"] --> D["⋮ Dots Appear<br/>(opacity 0→0.6)"]
+    D --> C["Click Dots"]
+    C --> M["Dropdown Opens<br/>(glassmorphic, animated)"]
+    M --> R["Rename"]
+    M --> P["Pin / Unpin"]
+    M --> X["Delete (red)"]
+    C2["Click Outside"] --> CL["Dropdown Closes"]
+
+    style M fill:#12121c,color:#fff,stroke:#ffffff14
+    style X fill:#ef4444,color:#fff
+    style P fill:#f59e0b,color:#000
+    style R fill:#3b82f6,color:#fff
+```
+
+### 11.7 Status Bar
+
+A fixed bottom bar displays real-time system information:
+- **Connection Status** — green dot for "Connected to TiDB Cloud", red for disconnected
+- **Active Model** — displays the current LLM model name
+- **Table Count** — number of indexed tables
+- **Row Count** — total rows in the database
 
 ---
 
@@ -762,7 +830,7 @@ Three optimizations were applied iteratively, with metrics measured after each r
 
 F1InsightAI demonstrates the practical application of Retrieval-Augmented Generation (RAG) in combination with an agentic LLM pipeline for domain-specific Text-to-SQL tasks. By retrieving only the relevant database schema context for each query, the system achieves higher SQL generation accuracy while using fewer tokens. The LangGraph-based agent with its multi-node state machine enables sophisticated behaviors like intent classification, self-reflection, and automatic error correction — capabilities that go beyond simple prompt-response chatbots.
 
-The cinematic frontend, built with glassmorphism design and a bento-grid layout, provides an engaging user experience that transforms raw database queries into visually appealing, interactive data stories. With support for conversation management, auto-generated charts, and follow-up suggestions, F1InsightAI serves as both a technical demonstration of modern AI architectures and a practical tool for exploring 75 years of Formula 1 history.
+The cinematic frontend, built with a \"Kinetic Cockpit\" design featuring mouse-following spotlight, telemetry grid overlay, 3D card tilt, rotating conic border, animated hero title, and a glassmorphism bento-grid layout, provides an engaging user experience that transforms raw database queries into visually appealing, interactive data stories. The ChatGPT-style three-dot dropdown menu, conversation pinning, and inline renaming deliver a polished chat management workflow. With support for auto-generated charts, follow-up suggestions, and live RAG evaluation metrics, F1InsightAI serves as both a technical demonstration of modern AI architectures and a practical tool for exploring 75 years of Formula 1 history.
 
 ---
 

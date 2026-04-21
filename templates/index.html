@@ -17,6 +17,10 @@
 <body>
     <!-- Particle Background -->
     <div id="tsparticles"></div>
+    <!-- Mouse Spotlight -->
+    <div class="mouse-spotlight" id="mouseSpotlight"></div>
+    <!-- Telemetry Grid -->
+    <div class="telemetry-grid"></div>
 
     <!-- History Drawer Trigger -->
     <button class="history-trigger" id="historyTrigger" title="Chat History">
@@ -121,6 +125,7 @@
 
         <!-- Search Input (starts inside hero, docks to bottom on submit) -->
         <footer class="search-dock" id="searchDock">
+            <div class="search-border-glow">
             <form class="search-input-wrap" id="chatForm">
                 <textarea id="userInput" placeholder="" rows="1"
                     autofocus></textarea>
@@ -132,6 +137,7 @@
                     </svg>
                 </button>
             </form>
+            </div>
             <div class="search-hint">
                 Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line
             </div>
