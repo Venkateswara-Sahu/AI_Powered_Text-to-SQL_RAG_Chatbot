@@ -877,20 +877,42 @@ function appendErrorBento(error, originalQuestion) {
 
 function appendLoading() {
     const div = document.createElement('div');
-    div.className = 'loading-flag';
+    div.className = 'f1-loader';
     div.innerHTML = `
-        <div class="flag-dots">
-            <div class="flag-dot"></div><div class="flag-dot"></div><div class="flag-dot"></div>
-            <div class="flag-dot"></div><div class="flag-dot"></div><div class="flag-dot"></div>
+        <div class="f1-loader-dots">
+            <span></span><span></span><span></span>
         </div>
-        <span class="loading-text">Querying F1 database...</span>`;
+        <div class="f1-loader-text">
+            <div>Analyzing your question...</div>
+            <div class="loader-step" id="loaderStep">Classifying intent</div>
+        </div>`;
     responseCanvas.appendChild(div);
     scrollToBottom();
+
+    // Cycle through pipeline steps
+    const steps = [
+        'Classifying intent',
+        'Retrieving schema context (RAG)',
+        'Generating SQL query',
+        'Executing on TiDB Cloud',
+        'Validating results',
+        'Generating answer',
+    ];
+    let stepIdx = 0;
+    div._stepInterval = setInterval(() => {
+        stepIdx = (stepIdx + 1) % steps.length;
+        const stepEl = div.querySelector('#loaderStep');
+        if (stepEl) stepEl.textContent = steps[stepIdx];
+    }, 2000);
+
     return div;
 }
 
 function removeElement(el) {
-    if (el && el.parentNode) el.parentNode.removeChild(el);
+    if (el) {
+        if (el._stepInterval) clearInterval(el._stepInterval);
+        if (el.parentNode) el.parentNode.removeChild(el);
+    }
 }
 
 

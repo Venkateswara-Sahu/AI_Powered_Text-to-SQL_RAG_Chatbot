@@ -49,7 +49,7 @@ An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Vector Store | FAISS (Facebook AI Similarity Search) |
 | Charts | Chart.js |
-| Database | TiDB Cloud (F1 Database — 16 tables, 700K+ rows) |
+| Database | TiDB Cloud (F1 Database — 14 F1 tables, 700K+ rows) |
 | Container | Docker + Docker Compose |
 
 ## 🏗️ Architecture

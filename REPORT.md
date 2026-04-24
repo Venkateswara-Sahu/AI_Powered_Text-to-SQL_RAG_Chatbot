@@ -45,7 +45,7 @@ The proliferation of data in modern sports analytics has created a growing need 
 
 Traditional approaches to querying structured databases require SQL expertise, which creates a significant barrier for casual users and sports enthusiasts. Text-to-SQL systems aim to bridge this gap by translating natural language questions into executable SQL queries. However, naive approaches that simply send the entire database schema to an LLM suffer from:
 
-- **Token inefficiency** — sending all 16 tables (100+ columns) in every prompt wastes tokens
+- **Token inefficiency** — sending all 14 F1 tables (100+ columns) in every prompt wastes tokens
 - **Reduced accuracy** — too much irrelevant context confuses the LLM
 - **No error recovery** — a single failed query ends the interaction
 
@@ -135,7 +135,7 @@ graph TB
 
     subgraph RAG ["🧠 RAG Pipeline"]
         EMB["Sentence-Transformers<br/>all-MiniLM-L6-v2"]
-        FAISS["FAISS Vector Index<br/>16 table embeddings"]
+        FAISS["FAISS Vector Index<br/>14 table embeddings"]
     end
 
     subgraph External ["☁️ External Services"]
@@ -265,7 +265,7 @@ All configuration is centralized in `config.py`, which reads environment variabl
 - **Database**: `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_SSL`
 - **LLM**: `GROQ_API_KEY`, `GROQ_MODEL`
 - **Flask**: `FLASK_SECRET_KEY`, `FLASK_DEBUG`
-- **RAG**: `TOP_K_SCHEMA_RESULTS` (default: 5), `MAX_RETRY_ATTEMPTS` (default: 2)
+- **RAG**: `TOP_K_SCHEMA_RESULTS` (default: 7), `MAX_RETRY_ATTEMPTS` (default: 2)
 
 ### 8.3 API Endpoints
 
@@ -288,7 +288,7 @@ All configuration is centralized in `config.py`, which reads environment variabl
 
 ### 9.1 Why RAG?
 
-The F1 database has 16 tables with 100+ columns. Sending the entire schema in every prompt would:
+The F1 database has 14 F1 tables (plus 2 system tables) with 100+ columns. Sending the entire schema in every prompt would:
 - Waste LLM tokens (increasing latency and cost)
 - Introduce irrelevant context that confuses SQL generation
 - Not scale to larger databases
@@ -329,10 +329,10 @@ sequenceDiagram
     participant L as Groq LLM
 
     Note over E,F: Startup (One-time Indexing)
-    A->>E: Encode 16 table schema documents
+    A->>E: Encode 14 F1 table schema documents (16 total − 2 system tables excluded)
     E-->>A: 384-dim vectors (float32)
     A->>F: Normalize (L2) + Store in IndexFlatIP
-    F-->>A: Index ready (16 vectors)
+    F-->>A: Index ready (14 vectors)
 
     Note over U,L: Query Time (Per Question)
     U->>A: "How many wins does Hamilton have?"
@@ -340,7 +340,7 @@ sequenceDiagram
     E-->>A: Query vector (384-dim)
     A->>F: Top-7 nearest neighbor search + co-occurrence rules
     F-->>A: [results, drivers, races, driver_standings, qualifying, circuits, constructors]
-    A->>L: Question + Top-5 schema docs + Few-shot examples
+    A->>L: Question + Top-7 schema docs + Few-shot examples
     L-->>A: SELECT d.forename, d.surname, COUNT(*) AS wins...
     A-->>U: SQL + Results + Answer
 ```
@@ -351,7 +351,7 @@ sequenceDiagram
 |--------|----------------------|--------------------------|
 | Documents | Text corpora (PDFs, wikis) | Database table schemas |
 | Output | Natural language answers | SQL queries |
-| Scale | Millions of documents | 16 documents (one per table) |
+| Scale | Millions of documents | 14 documents (one per F1 table) |
 | Retrieval | Multi-hop, iterative | Single-pass, top-K |
 | Purpose | Ground answers in facts | Ground SQL in correct schema |
 
@@ -492,7 +492,7 @@ The history sidebar uses a ChatGPT-style **three-dot dropdown menu** for chat ac
 - Clicking the dots opens a **glassmorphic dropdown** with animated entry (`translateY + scale`)
 - **Rename** — inline editing with click-to-position cursor support
 - **Pin/Unpin** — pinned chats stay at top with a 📌 icon; unpinned return to chronological position
-- **Delete** — red-highlighted destructive action with confirmation dialog
+- **Delete** — red-highlighted destructive action with a **two-click confirm** pattern (first click changes the button to "Confirm?", second click deletes; resets after 3 seconds)
 - **Click outside** — closes the dropdown automatically
 - **Copy question** — hover-reveal copy button on user messages
 - All conversations are stored **server-side** in TiDB Cloud (persists across restarts)
@@ -505,21 +505,55 @@ flowchart LR
     M --> R["Rename"]
     M --> P["Pin / Unpin"]
     M --> X["Delete (red)"]
+    X --> CF["Confirm?<br/>(2nd click to delete)"]
     C2["Click Outside"] --> CL["Dropdown Closes"]
 
     style M fill:#12121c,color:#fff,stroke:#ffffff14
     style X fill:#ef4444,color:#fff
+    style CF fill:#dc2626,color:#fff
     style P fill:#f59e0b,color:#000
     style R fill:#3b82f6,color:#fff
 ```
 
-### 11.7 Status Bar
+### 11.7 F1-Themed Suggestion Chips
+
+The landing page features four quick-start suggestion chips, each with a themed SVG icon:
+
+| Chip | Icon | Query |
+|------|------|-------|
+| Most race wins | 🏆 Trophy SVG | "Who has the most race wins?" |
+| Hamilton vs Verstappen | 📊 Bar chart SVG | "Compare Hamilton vs Verstappen" |
+| 2023 race calendar | 📅 Calendar SVG | "Show the 2023 race calendar" |
+| Pit stop times | ⏱ Clock SVG | "Average pit stop duration by team" |
+
+### 11.8 F1 Loading Animation
+
+While the AI pipeline processes a query, a custom F1-themed loading animation is displayed:
+
+- **Three bouncing red dots** with staggered animation delays and a glow effect
+- **Pipeline step cycling** — the text dynamically updates through the agent's processing stages:
+  - "Classifying intent" → "Retrieving schema context (RAG)" → "Generating SQL query" → "Executing on TiDB Cloud" → "Validating results" → "Generating answer"
+- The loader is displayed in a **glassmorphic card** (matching the bento grid aesthetic), centered at 60% max-width
+
+### 11.9 Status Bar
 
 A fixed bottom bar displays real-time system information:
 - **Connection Status** — green dot for "Connected to TiDB Cloud", red for disconnected
+- **Architecture Link** — quick navigation to the interactive system architecture page
 - **Active Model** — displays the current LLM model name
 - **Table Count** — number of indexed tables
 - **Row Count** — total rows in the database
+
+### 11.10 Interactive Architecture Page
+
+A dedicated `/architecture` page provides an interactive visual showcase of the entire system for technical reviewers:
+
+1. **LangGraph Pipeline Visualization** — Animated, color-coded node diagram showing all 9 processing nodes with conditional branching (database query vs. conversation), retry loops, and data flow arrows
+2. **RAG Pipeline Flow** — Step-by-step horizontal flow: User Question → Sentence Transformer → FAISS Index → LLM Prompt → SQL Query, with connector labels (Embed, Search, Inject, Generate)
+3. **Technology Stack Grid** — 8 cards with icons for Flask, LangGraph, Groq, FAISS, TiDB Cloud, Chart.js, Sentence-BERT, and Docker
+4. **Key Capabilities Grid** — 6 feature cards highlighting Schema-Aware RAG, Auto Error Recovery, Self-Reflection, Multi-Turn Context, Live RAG Metrics, and F1 Domain Knowledge
+5. **Live System Stats** — Real-time connection status, model name, table count, and row count fetched from the API
+6. **Scroll-reveal Animations** — All elements animate in via `IntersectionObserver` as the user scrolls
 
 ---
 
@@ -527,7 +561,7 @@ A fixed bottom bar displays real-time system information:
 
 ### 12.1 F1 Database (Ergast Schema)
 
-The F1 database contains 16 tables with 700,000+ rows covering 75 years of racing data:
+The F1 database contains 14 tables with 700,000+ rows covering 75 years of racing data:
 
 | Table | Description | Key Columns |
 |-------|-------------|-------------|
@@ -830,7 +864,7 @@ Three optimizations were applied iteratively, with metrics measured after each r
 
 F1InsightAI demonstrates the practical application of Retrieval-Augmented Generation (RAG) in combination with an agentic LLM pipeline for domain-specific Text-to-SQL tasks. By retrieving only the relevant database schema context for each query, the system achieves higher SQL generation accuracy while using fewer tokens. The LangGraph-based agent with its multi-node state machine enables sophisticated behaviors like intent classification, self-reflection, and automatic error correction — capabilities that go beyond simple prompt-response chatbots.
 
-The cinematic frontend, built with a \"Kinetic Cockpit\" design featuring mouse-following spotlight, telemetry grid overlay, 3D card tilt, rotating conic border, animated hero title, and a glassmorphism bento-grid layout, provides an engaging user experience that transforms raw database queries into visually appealing, interactive data stories. The ChatGPT-style three-dot dropdown menu, conversation pinning, and inline renaming deliver a polished chat management workflow. With support for auto-generated charts, follow-up suggestions, and live RAG evaluation metrics, F1InsightAI serves as both a technical demonstration of modern AI architectures and a practical tool for exploring 75 years of Formula 1 history.
+The cinematic frontend, built with a \"Kinetic Cockpit\" design featuring mouse-following spotlight, telemetry grid overlay, 3D card tilt, rotating conic border, animated hero title, and a glassmorphism bento-grid layout, provides an engaging user experience that transforms raw database queries into visually appealing, interactive data stories. The ChatGPT-style three-dot dropdown menu, conversation pinning, and inline renaming deliver a polished chat management workflow. F1-themed suggestion chip icons (trophy, chart, calendar, clock) and a custom pipeline-step loading animation add visual identity, while the dedicated interactive Architecture page provides a complete visual showcase of the system's technical depth. With support for auto-generated charts, follow-up suggestions, and live RAG evaluation metrics, F1InsightAI serves as both a technical demonstration of modern AI architectures and a practical tool for exploring 75 years of Formula 1 history.
 
 ---
 
@@ -849,20 +883,24 @@ The cinematic frontend, built with a \"Kinetic Cockpit\" design featuring mouse-
 
 ## Appendix A: Application Screenshots
 
+*Note: Screenshots are included in the submitted DOCX report.*
+
 ### A.1 Landing Page — Welcome Dashboard
 
-The landing page features a **particle.js animated background**, the F1InsightAI logo, **live database statistics** (16 tables, 701,530 records, 131 columns), the active AI model badge (Llama 3.3-70b-versatile), and **suggestion chips** for quick-start queries.
-
-![F1InsightAI Landing Page](docs/screenshots/01_landing_page.png)
+The landing page features a **tsParticles animated background**, the F1InsightAI logo, **live database statistics** (14 tables, 701,678 records, 131 columns), the active AI model badge (Llama 3.3-70b-versatile), and **F1-themed suggestion chips** (with trophy, chart, calendar, and clock icons) for quick-start queries.
 
 ### A.2 Query Result — Bento Grid Layout
 
-After asking *"Who has the most race wins?"*, the system displays results in a **bento-grid layout**: a scrollable data table (Hamilton 105, Schumacher 91, Verstappen 63...), **syntax-highlighted SQL** with copy/download buttons, a collapsible **Agent Reasoning** accordion, and **AI-generated follow-up suggestions** as clickable pills.
-
-![Query Result with Bento Grid](docs/screenshots/02_query_result.png)
+After asking *"Who has the most race wins?"*, the system displays results in a **bento-grid layout**: a scrollable data table (Hamilton 105, Schumacher 91, Verstappen 63...), **syntax-highlighted SQL** with copy/download buttons, a collapsible **Agent Reasoning** accordion, **RAG evaluation metrics** (MRR, Recall@K, Context Relevance, Faithfulness), and **AI-generated follow-up suggestions** as clickable pills.
 
 ### A.3 Agent Reasoning — Pipeline Transparency
 
 The expanded **Agent Reasoning** accordion reveals each step of the 6-step pipeline: (1) **classify** — identified as a database query, (2) **retrieve_schema** — RAG found 5,644 chars of relevant schema context, (3) **generate_sql** — LLM generated the SELECT query, (4) **execute_sql** — returned 50 rows successfully, (5) **reflect** — validated results, (6) **generate_answer** — created the natural language summary.
 
-![Agent Reasoning Expanded](docs/screenshots/03_agent_reasoning.png)
+### A.4 F1 Loading Animation
+
+While a query is being processed, a **glassmorphic loader card** displays three bouncing red dots and cycles through pipeline steps ("Classifying intent", "Retrieving schema context", "Generating SQL query", etc.).
+
+### A.5 Architecture Page — System Showcase
+
+The interactive `/architecture` page displays the complete system architecture: the **9-node LangGraph pipeline** with animated color-coded nodes, the **RAG pipeline flow** from question to SQL, an **8-card technology stack grid**, and a **6-card key capabilities section** — all with scroll-reveal animations and live system stats.

@@ -47,6 +47,12 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/architecture")
+def architecture():
+    """Serve the architecture showcase page."""
+    return render_template("architecture.html")
+
+
 @app.route("/api/health", methods=["GET"])
 def health_check():
     """Check system health: database + LLM."""

@@ -9,7 +9,7 @@
 
 ## 1. Introduction & Problem Statement
 
-F1InsightAI is an AI-powered chatbot that allows users to query a comprehensive Formula 1 database (1950–2024, 16 tables, 700K+ rows) using plain English. The system converts natural language questions into SQL queries using Retrieval-Augmented Generation (RAG) and a multi-step agentic pipeline.
+F1InsightAI is an AI-powered chatbot that allows users to query a comprehensive Formula 1 database (1950–2024, 14 F1 tables, 700K+ rows) using plain English. The system converts natural language questions into SQL queries using Retrieval-Augmented Generation (RAG) and a multi-step agentic pipeline.
 
 **Problem:** Querying structured databases requires SQL expertise, creating a barrier for non-technical users. Naive Text-to-SQL approaches that send the entire schema to an LLM suffer from token inefficiency, reduced accuracy, and no error recovery.
 
@@ -58,7 +58,7 @@ The system follows a 3-layer architecture:
 
 The RAG (Retrieval-Augmented Generation) pipeline ensures the LLM receives only relevant schema context:
 
-- **Indexing (startup):** All 16 table schemas are converted to rich text documents, embedded using all-MiniLM-L6-v2 (384-dim vectors), normalized, and stored in a FAISS IndexFlatIP.
+- **Indexing (startup):** All 14 F1 table schemas (excluding 2 system tables) are converted to rich text documents, embedded using all-MiniLM-L6-v2 (384-dim vectors), normalized, and stored in a FAISS IndexFlatIP.
 - **Retrieval (per query):** The user's question is embedded, and FAISS performs a top-7 cosine similarity search. Co-occurrence rules then auto-inject related tables (e.g., `results` → `drivers`, `races` → `circuits`).
 - **Augmentation:** The retrieved table descriptions are injected into the LLM system prompt alongside few-shot examples and F1 domain knowledge (team name changes, race name changes, circuit name mappings).
 
