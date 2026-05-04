@@ -35,21 +35,21 @@
 
 ## 1. Abstract
 
-F1InsightAI is an AI-powered chatbot that enables users to query a comprehensive Formula 1 database (1950–2024) using natural language. The system employs Retrieval-Augmented Generation (RAG) to dynamically retrieve relevant database schema context, which is then used by a Large Language Model (LLM) to generate accurate SQL queries. Built on a LangGraph-based agentic pipeline with 9 processing nodes, the system supports multi-step reasoning, automatic error correction, and self-reflection. The frontend features a cinematic data interface with auto-generated visualizations, conversation management, and an interactive bento-grid results layout. The entire system is deployed using Flask, with the F1 database hosted on TiDB Cloud and LLM inference powered by the Groq API (Llama 3.3 70B).
+F1InsightAI is a chatbot we built to let anyone ask questions about Formula 1 history in plain English and get back real answers from a database. The database covers F1 data from 1950 all the way to 2024. Instead of dumping the whole database schema into the AI prompt every time (which wastes tokens and confuses the model), we use a technique called Retrieval-Augmented Generation (RAG) — it picks out only the relevant tables for each question before the LLM writes the SQL. The backend runs on a 9-node LangGraph agent that handles everything from figuring out what the user is asking, to generating SQL, running it, checking if the results make sense, and retrying if something breaks. On the frontend, we went with a dark-themed cinematic interface that shows results in a card-based grid with auto-generated charts, syntax-highlighted SQL, and follow-up suggestions. The whole thing runs on Flask, with TiDB Cloud hosting the database and Groq's API providing fast inference through the Llama 3.3 70B model.
 
 ---
 
 ## 2. Introduction
 
-The proliferation of data in modern sports analytics has created a growing need for accessible tools that allow non-technical users to explore complex datasets. Formula 1, with over 75 years of racing data encompassing drivers, teams, circuits, lap times, pit stops, and race results, presents an ideal domain for such exploration.
+Formula 1 has been around for over 75 years, and in that time a massive amount of data has piled up — race results, driver stats, lap times, pit stops, qualifying sessions, constructor standings, and more. All of this sits in a relational database with 14 tables and over 100 columns. But the problem is, to actually get anything useful out of it, you need to know SQL. And most F1 fans or casual users don't.
 
-Traditional approaches to querying structured databases require SQL expertise, which creates a significant barrier for casual users and sports enthusiasts. Text-to-SQL systems aim to bridge this gap by translating natural language questions into executable SQL queries. However, naive approaches that simply send the entire database schema to an LLM suffer from:
+That's where Text-to-SQL comes in. The idea is simple: the user types a question like "Who has the most race wins?" and the system figures out the right SQL query to answer it. But when we started looking into how to actually build this, we ran into some real issues with the basic approach of just sending the full schema to an LLM:
 
-- **Token inefficiency** — sending all 14 F1 tables (100+ columns) in every prompt wastes tokens
-- **Reduced accuracy** — too much irrelevant context confuses the LLM
-- **No error recovery** — a single failed query ends the interaction
+- **Token waste** — our F1 database has 14 tables with 100+ columns, and sending all of that every time eats up the context window for no reason
+- **Confused outputs** — when the LLM sees too many irrelevant tables, it starts joining things that don't make sense or picks the wrong columns
+- **No recovery** — if the generated SQL fails, a basic system just returns an error and that's it
 
-F1InsightAI addresses these challenges using a **Retrieval-Augmented Generation (RAG)** approach combined with a **stateful agentic pipeline** that can classify intents, retrieve relevant context, generate SQL, execute queries, self-reflect on results, and automatically retry on errors.
+So we built F1InsightAI to handle all of this properly. We use RAG to pull only the relevant schema context for each question, and we wrapped the whole thing in a LangGraph-based agent pipeline that can classify what the user is asking, generate SQL, run it against the database, check whether the results actually make sense, and retry with corrections if something goes wrong.
 
 ---
 
@@ -77,30 +77,29 @@ How can we build an intelligent chatbot that:
 
 ### 5.1 Text-to-SQL Systems
 
-Text-to-SQL is the task of converting natural language utterances into executable SQL queries. Early approaches used rule-based parsing and template matching. Modern approaches leverage deep learning and LLMs. Notable systems include:
+The whole idea of converting a normal English question into a SQL query has been around for a while. Earlier systems relied on fixed rules and templates — basically pattern matching. But with LLMs becoming more capable, the field has shifted towards using these models to generate SQL directly from natural language input. We looked at a few key benchmarks and systems while building our project:
 
-- **Spider** (Yu et al., 2018) — A large-scale cross-database Text-to-SQL benchmark
-- **RESDSQL** (Li et al., 2023) — Ranking-enhanced encoding for schema linking
-- **DIN-SQL** (Pourreza & Rafiei, 2023) — Decomposed in-context learning for Text-to-SQL
+- **Spider** (Yu et al., 2018) is a widely-used benchmark for cross-database Text-to-SQL. It gave us a good sense of how these systems are evaluated and what kind of accuracy to expect.
+- **RESDSQL** (Li et al., 2023) focuses on schema linking — figuring out which tables and columns are actually relevant to a given question. This was directly relevant to our RAG approach since we're essentially doing the same thing, just with vector search instead of a ranking model.
+- **DIN-SQL** (Pourreza & Rafiei, 2023) breaks down the SQL generation into smaller steps rather than trying to do it all at once. Our pipeline follows a similar philosophy — we classify the intent first, then retrieve schema, then generate SQL, rather than doing everything in one prompt.
 
 ### 5.2 Retrieval-Augmented Generation (RAG)
 
-RAG, introduced by Lewis et al. (2020), combines retrieval from external knowledge sources with LLM generation. Instead of relying solely on the LLM's parametric knowledge, RAG retrieves relevant documents at inference time and injects them into the prompt. This approach:
+RAG was first proposed by Lewis et al. (2020). The core idea is straightforward: instead of expecting the LLM to know everything from its training data, you fetch relevant information at query time and include it in the prompt. For our use case, this meant fetching only the database tables that are actually needed for a given question.
 
-- Reduces hallucination by grounding the LLM in factual data
-- Improves accuracy for domain-specific tasks
-- Enables the system to scale to large knowledge bases without fine-tuning
+We picked RAG over fine-tuning for a few practical reasons. First, fine-tuning a large model on our specific schema would require GPU resources we didn't have. Second, RAG is more flexible — if we add new tables to the database tomorrow, the system picks them up automatically without retraining. And third, it keeps the prompts smaller, which means faster responses and lower API costs.
+
+The main benefits we saw in practice were:
+
+- The LLM stopped hallucinating table names that don't exist when we limited the context to only relevant tables
+- SQL accuracy went up because the model wasn't distracted by unrelated schema
+- We could scale to more tables without worrying about context window limits
 
 ### 5.3 Agentic AI Pipelines
 
-Agentic AI extends simple prompt-response LLM systems by introducing:
+A basic chatbot just takes a prompt and gives a response. But for something like SQL generation, that's not enough — you need multiple steps. You need to figure out what the user is asking, pull the right context, generate the SQL, run it, and then check if the output actually makes sense. If the SQL fails, you want to fix it and try again rather than just showing an error.
 
-- **Multi-step reasoning** — breaking complex tasks into sub-steps
-- **Tool use** — allowing the LLM to call external tools (databases, APIs)
-- **Self-reflection** — the agent evaluates its own output and retries if needed
-- **State management** — maintaining context across steps
-
-LangGraph (by LangChain) provides a framework for building stateful, graph-based agent workflows with conditional routing.
+This is what agentic AI is about — building systems where the LLM operates as part of a larger workflow with multiple steps, tool access, and decision-making loops. We used LangGraph for this because it lets you define the pipeline as a graph with nodes and edges, where each node is a processing step and edges can be conditional (for example, routing to a retry node if SQL execution fails). It also handles state management, so each step can access and modify a shared state object as the query moves through the pipeline.
 
 ---
 
@@ -849,22 +848,17 @@ Three optimizations were applied iteratively, with metrics measured after each r
 
 ## 15. Future Scope
 
-1. **Persistent FAISS Index** — Save the vector index to disk to avoid re-embedding on every restart
-2. **Fine-tuned Embeddings** — Train domain-specific embeddings on F1 terminology for better retrieval
-3. **Voice Input** — Add speech-to-text for voice-based queries
-4. **Data Visualization Enhancements** — Heatmaps, race trajectory maps, season timelines
-5. **Multi-database Support** — Extend to other sports databases (cricket, football)
-6. **User Authentication** — Login system with personal conversation history
-7. **Caching Layer** — Cache frequent queries to reduce LLM API calls
-8. **Export Reports** — PDF/image export of complete response grids
+There are several areas where F1InsightAI can be improved and extended in future iterations. The FAISS vector index is currently rebuilt from scratch every time the application starts, so implementing persistent indexing by saving and loading the index from disk would speed up startup significantly. Training domain-specific embeddings on F1 terminology could improve retrieval accuracy beyond what the general-purpose all-MiniLM-L6-v2 model provides. Adding voice input through speech-to-text would make the chatbot more accessible, especially for mobile users. The current chart generation supports bar charts and tables, but adding heatmaps, race trajectory maps, and season timelines would make the visualizations more informative. The system is currently limited to F1 data, but the architecture is general enough to support other sports databases like cricket or football with minimal changes. A user authentication system with login and personal conversation history would make the platform more useful for returning users. Implementing a caching layer for frequent queries would reduce Groq API calls and improve response times. Finally, an export feature for generating PDF or image reports from the bento-grid response layout would let users save and share their query results.
 
 ---
 
 ## 16. Conclusion
 
-F1InsightAI demonstrates the practical application of Retrieval-Augmented Generation (RAG) in combination with an agentic LLM pipeline for domain-specific Text-to-SQL tasks. By retrieving only the relevant database schema context for each query, the system achieves higher SQL generation accuracy while using fewer tokens. The LangGraph-based agent with its multi-node state machine enables sophisticated behaviors like intent classification, self-reflection, and automatic error correction — capabilities that go beyond simple prompt-response chatbots.
+Building F1InsightAI taught us a lot about how RAG and agentic pipelines work together in practice. The biggest takeaway was that sending only the relevant tables to the LLM (instead of everything) made a noticeable difference in SQL accuracy. Our MRR scores improved from 0.12 to 0.67 across three rounds of RAG optimization, and the model stopped generating queries that referenced tables which didn't exist. The retry mechanism also proved its worth — in our benchmark testing, queries that failed on the first attempt were often corrected automatically on the second try without the user having to do anything.
 
-The cinematic frontend, built with a \"Kinetic Cockpit\" design featuring mouse-following spotlight, telemetry grid overlay, 3D card tilt, rotating conic border, animated hero title, and a glassmorphism bento-grid layout, provides an engaging user experience that transforms raw database queries into visually appealing, interactive data stories. The ChatGPT-style three-dot dropdown menu, conversation pinning, and inline renaming deliver a polished chat management workflow. F1-themed suggestion chip icons (trophy, chart, calendar, clock) and a custom pipeline-step loading animation add visual identity, while the dedicated interactive Architecture page provides a complete visual showcase of the system's technical depth. With support for auto-generated charts, follow-up suggestions, and live RAG evaluation metrics, F1InsightAI serves as both a technical demonstration of modern AI architectures and a practical tool for exploring 75 years of Formula 1 history.
+On the frontend side, we spent a good amount of time making the interface feel polished and presentable. The dark-themed design with the spotlight effect, animated card reveals, and the bento-grid layout turned what could have been a plain chatbot into something that actually looks like a finished product. Features like conversation pinning, inline renaming, the two-click delete pattern, and auto-generated Chart.js visualizations made the whole experience feel complete rather than like a demo.
+
+The system isn't perfect — complex multi-table joins with ambiguous questions still trip it up sometimes, and the FAISS index gets rebuilt on every restart since we haven't implemented persistent indexing yet. But for the scope of a capstone project, it covers the core concepts well: RAG for context retrieval, an agentic pipeline for multi-step processing, cloud database integration with TiDB, and a frontend that's ready to present. The interactive Architecture page we added at the end ties everything together by giving reviewers a visual walkthrough of how the whole system works under the hood.
 
 ---
 
