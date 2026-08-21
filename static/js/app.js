@@ -383,7 +383,7 @@ async function loadChat(id) {
                     // Plain text fallback (old messages or errors)
                     const fallback = document.createElement('div');
                     fallback.className = 'bento-grid';
-                    fallback.innerHTML = `<div class="bento-card bento-answer"><div class="answer-text">${escapeHtml(msg.content || '')}</div></div>`;
+                    fallback.innerHTML = `<div class="bento-card bento-answer"><div class="answer-text">${renderMarkdown(msg.content || '')}</div></div>`;
                     responseCanvas.appendChild(fallback);
                 }
             }
@@ -683,7 +683,7 @@ function appendBentoGrid(data) {
     const faithScore = data.rag_metrics ? data.rag_metrics.faithfulness_score : null;
     let answerHtml = `
         <div class="bento-card bento-answer">
-            <div class="answer-text">${escapeHtml(data.answer || 'No answer generated.')}</div>
+            <div class="answer-text">${renderMarkdown(data.answer || 'No answer generated.')}</div>
             <div class="answer-badges">`;
     if (data.execution_time) {
         answerHtml += `
@@ -1157,6 +1157,85 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function renderMarkdown(text) {
+    if (!text) return '';
+    
+    // Normalize inline bullet points if they were placed inline without line breaks
+    let normalized = text
+        .replace(/([.!?:])\s+[-*•]\s+/g, '$1\n- ')
+        .replace(/\s+[-*•]\s+\*\*/g, '\n- **');
+    
+    // First escape raw HTML for security
+    let escaped = normalized
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
+    // Bold: **text** or __text__
+    escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    escaped = escaped.replace(/__(.*?)__/g, '<strong>$1</strong>');
+    
+    // Italic: *text* or _text_
+    escaped = escaped.replace(/(?<!\*)\*(?!\*)([^\*]+)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+    
+    // Inline code: `code`
+    escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Process lines for bullet points, numbered lists, and paragraphs
+    const lines = escaped.split('\n');
+    let html = '';
+    let inList = false;
+    let listType = null;
+    
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line) {
+            if (inList) {
+                html += listType === 'ul' ? '</ul>' : '</ol>';
+                inList = false;
+                listType = null;
+            }
+            continue;
+        }
+        
+        // Bullet list: - item or * item
+        const bulletMatch = line.match(/^[-*•]\s+(.*)/);
+        // Numbered list: 1. item
+        const numMatch = line.match(/^(\d+)\.\s+(.*)/);
+        
+        if (bulletMatch) {
+            if (!inList || listType !== 'ul') {
+                if (inList) html += listType === 'ul' ? '</ul>' : '</ol>';
+                html += '<ul class="ans-list">';
+                inList = true;
+                listType = 'ul';
+            }
+            html += `<li>${bulletMatch[1]}</li>`;
+        } else if (numMatch) {
+            if (!inList || listType !== 'ol') {
+                if (inList) html += listType === 'ul' ? '</ul>' : '</ol>';
+                html += '<ol class="ans-list">';
+                inList = true;
+                listType = 'ol';
+            }
+            html += `<li>${numMatch[2]}</li>`;
+        } else {
+            if (inList) {
+                html += listType === 'ul' ? '</ul>' : '</ol>';
+                inList = false;
+                listType = null;
+            }
+            html += `<p>${line}</p>`;
+        }
+    }
+    
+    if (inList) {
+        html += listType === 'ul' ? '</ul>' : '</ol>';
+    }
+    
+    return html || escaped;
+}
+
 function escapeForTemplate(text) {
     return text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/'/g, "\\'").replace(/\n/g, '\\n');
 }
@@ -1166,3 +1245,4 @@ function scrollToBottom() {
         responseCanvas.scrollTop = responseCanvas.scrollHeight;
     }, 50);
 }
+

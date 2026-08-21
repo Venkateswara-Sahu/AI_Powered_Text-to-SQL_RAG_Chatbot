@@ -1044,12 +1044,51 @@ body {
 }
 
 
-/* ── Bento Card: Answer ───────────────────────────────────── */
 .bento-answer .answer-text {
-    font-size: 1.05rem;
+    font-size: 1.02rem;
     line-height: 1.7;
     color: var(--text-primary);
     font-weight: 400;
+}
+
+.bento-answer .answer-text p {
+    margin: 0 0 0.85rem 0;
+}
+
+.bento-answer .answer-text p:last-child {
+    margin-bottom: 0;
+}
+
+.bento-answer .answer-text ul.ans-list,
+.bento-answer .answer-text ol.ans-list {
+    margin: 0.6rem 0 0.9rem 1.4rem;
+    padding: 0;
+}
+
+.bento-answer .answer-text ul.ans-list li,
+.bento-answer .answer-text ol.ans-list li {
+    margin-bottom: 0.45rem;
+    line-height: 1.65;
+    color: var(--text-secondary);
+}
+
+.bento-answer .answer-text strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.bento-answer .answer-text em {
+    color: var(--text-accent, #e10600);
+    font-style: italic;
+}
+
+.bento-answer .answer-text code {
+    background: rgba(255, 255, 255, 0.07);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    color: #ff8080;
 }
 
 .bento-answer .exec-badge {
