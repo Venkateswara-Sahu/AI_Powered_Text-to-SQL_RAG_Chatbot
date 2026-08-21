@@ -35,7 +35,7 @@
 
 ## 1. Abstract
 
-F1InsightAI is a chatbot we built to let anyone ask questions about Formula 1 history in plain English and get back real answers from a database. The database covers F1 data from 1950 all the way to 2024. Instead of dumping the whole database schema into the AI prompt every time (which wastes tokens and confuses the model), we use a technique called Retrieval-Augmented Generation (RAG) — it picks out only the relevant tables for each question before the LLM writes the SQL. The backend runs on a 9-node LangGraph agent that handles everything from figuring out what the user is asking, to generating SQL, running it, checking if the results make sense, and retrying if something breaks. On the frontend, we went with a dark-themed cinematic interface that shows results in a card-based grid with auto-generated charts, syntax-highlighted SQL, and follow-up suggestions. The whole thing runs on Flask, with TiDB Cloud hosting the database and Groq's API providing fast inference through the Llama 3.3 70B model.
+F1InsightAI is a chatbot we built to let anyone ask questions about Formula 1 history in plain English and get back real answers from a database. The database covers F1 data from 1950 all the way to 2024. Instead of dumping the whole database schema into the AI prompt every time (which wastes tokens and confuses the model), we use a technique called Retrieval-Augmented Generation (RAG) — it picks out only the relevant tables for each question before the LLM writes the SQL. The backend runs on a 9-node LangGraph agent that handles everything from figuring out what the user is asking, to generating SQL, running it, checking if the results make sense, and retrying if something breaks. On the frontend, we went with a dark-themed cinematic interface that shows results in a card-based grid with auto-generated charts, syntax-highlighted SQL, and follow-up suggestions. The whole thing runs on Flask, with TiDB Cloud hosting the database and Groq's API providing fast inference through the GPT OSS 120B model.
 
 ---
 
@@ -138,7 +138,7 @@ graph TB
     end
 
     subgraph External ["☁️ External Services"]
-        GROQ["Groq API<br/>Llama 3.3 70B"]
+        GROQ["Groq API<br/>GPT OSS 120B"]
         TIDB[("TiDB Cloud<br/>F1 Database<br/>700K+ rows")]
     end
 
@@ -214,7 +214,7 @@ flowchart TD
 |-----------|------------|---------------|
 | Backend | Flask (Python 3.11) | Lightweight, well-suited for API development |
 | Agent Framework | LangGraph | Stateful graph-based workflows with conditional edges |
-| LLM | Groq API (Llama 3.3 70B) | Free tier, extremely fast inference (~2-3s), open-source model |
+| LLM | Groq API (GPT OSS 120B) | Free tier, extremely fast inference (~2-3s), open-source model |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) | Lightweight (80MB), high-quality semantic embeddings |
 | Vector Store | FAISS (Facebook AI Similarity Search) | Optimized for fast similarity search, no external server needed |
 | Database | TiDB Cloud (MySQL-compatible) | Serverless, free tier, cloud-hosted, SSL-encrypted |
@@ -881,7 +881,7 @@ The system isn't perfect — complex multi-table joins with ambiguous questions 
 
 ### A.1 Landing Page — Welcome Dashboard
 
-The landing page features a **tsParticles animated background**, the F1InsightAI logo, **live database statistics** (14 tables, 701,678 records, 131 columns), the active AI model badge (Llama 3.3-70b-versatile), and **F1-themed suggestion chips** (with trophy, chart, calendar, and clock icons) for quick-start queries.
+The landing page features a **tsParticles animated background**, the F1InsightAI logo, **live database statistics** (14 tables, 701,678 records, 131 columns), the active AI model badge (openai/gpt-oss-120b), and **F1-themed suggestion chips** (with trophy, chart, calendar, and clock icons) for quick-start queries.
 
 ### A.2 Query Result — Bento Grid Layout
 

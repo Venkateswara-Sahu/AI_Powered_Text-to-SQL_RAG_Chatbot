@@ -32,4 +32,17 @@ Thumbs.db
 f1-csv/
 f1db-dump/
 
+# Temporary & Tooling
+.sfdx/
+~$*
+
+# College Presentation & Local Utilities
+create_presentation.py
+dump_db.py
+*.pptx
+
+# Large Documents & Reports
+*.docx
+*.pdf
+
 docs/screenshots/

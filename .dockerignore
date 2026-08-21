@@ -13,3 +13,7 @@ __pycache__/
 *.sql
 f1-csv/
 f1db-dump/
+.sfdx/
+*.pdf
+*.docx
+*.pptx

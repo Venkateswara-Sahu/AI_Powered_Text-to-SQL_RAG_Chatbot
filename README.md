@@ -10,7 +10,7 @@ pinned: false
 
 # 🏎️ F1InsightAI — AI-Powered Formula 1 Text-to-SQL RAG Chatbot
 
-An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural language questions into SQL queries over a comprehensive Formula 1 database (1950–2024) hosted on **TiDB Cloud**. Built with Flask, a LangGraph agentic pipeline, Groq API (Llama 3.3 70B), and FAISS-based RAG for schema-aware SQL generation.
+An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural language questions into SQL queries over a comprehensive Formula 1 database (1950–2024) hosted on **TiDB Cloud**. Built with Flask, a LangGraph agentic pipeline, Groq API (GPT OSS 120B), and FAISS-based RAG for schema-aware SQL generation.
 
 ## ✨ Features
 
@@ -20,7 +20,7 @@ An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural
 - **LangGraph Agentic Pipeline** — Multi-step reasoning with classify → retrieve → generate → execute → reflect → answer
 - **Auto-Retry with Error Feedback** — If a query fails, the agent gets the error and automatically fixes the SQL
 - **Read-Only SQL Enforcement** — Only SELECT queries are allowed; all write operations are blocked
-- **Groq API** — Lightning-fast inference using Llama 3.3 70B (free tier)
+- **Groq API** — Lightning-fast inference using GPT OSS 120B (free tier)
 - **RAG Evaluation Metrics** — Live MRR, Recall@K, Context Relevance, and Faithfulness scores displayed per query
 
 ### User Experience
@@ -45,7 +45,7 @@ An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural
 |-----------|------------|
 | Backend | Flask (Python) |
 | Agent | LangGraph (multi-step reasoning) |
-| LLM | Groq API (Llama 3.3 70B Versatile) |
+| LLM | Groq API (GPT OSS 120B) |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Vector Store | FAISS (Facebook AI Similarity Search) |
 | Charts | Chart.js |
@@ -76,7 +76,7 @@ User Question
 │  └────────┬────────┘                                 │
 │           ▼                                          │
 │  ┌──────────────┐                                    │
-│  │ generate_sql │  Groq LLM (Llama 3.3 70B)         │
+│  │ generate_sql │  Groq LLM (GPT OSS 120B)          │
 │  └──────┬───────┘                                    │
 │         ▼                                            │
 │  ┌─────────────┐                                     │

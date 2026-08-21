@@ -23,7 +23,7 @@ F1InsightAI is an AI-powered chatbot that allows users to query a comprehensive 
 |-----------|------------|
 | Backend | Flask (Python) |
 | Agent Framework | LangGraph (9-node state graph) |
-| LLM | Groq API — Llama 3.3 70B Versatile |
+| LLM | Groq API — GPT OSS 120B |
 | Embeddings | Sentence-Transformers (all-MiniLM-L6-v2) |
 | Vector Store | FAISS (Facebook AI Similarity Search) |
 | Database | TiDB Cloud (MySQL-compatible, serverless) |
