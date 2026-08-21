@@ -101,7 +101,7 @@ class SQLGenerator:
                     {"role": "user", "content": user_message},
                 ],
                 temperature=0.1,  # Low temperature for deterministic SQL
-                max_tokens=1024,
+                max_tokens=512,
             )
 
             raw_response = response.choices[0].message.content
@@ -152,7 +152,7 @@ class SQLGenerator:
                     {"role": "user", "content": retry_message},
                 ],
                 temperature=0.1,
-                max_tokens=1024,
+                max_tokens=512,
             )
 
             raw_response = response.choices[0].message.content

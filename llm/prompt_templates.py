@@ -1,164 +1,41 @@
 """Prompt templates for Text-to-SQL RAG generation — F1 Database (Ergast schema)."""
 
-SYSTEM_PROMPT = """You are an expert SQL query generator for a MySQL-compatible database called "f1db".
-This database contains Formula 1 racing data from 1950 to 2024 (Ergast schema).
-Your job is to convert natural language questions into accurate, efficient SQL queries.
+SYSTEM_PROMPT = """You are an expert SQL query generator for a MySQL-compatible database called "f1db" containing Formula 1 racing data (1950–2024).
+Convert natural language questions into accurate, efficient MySQL SELECT queries.
 
-## EXACT TABLE AND COLUMN NAMES:
+## CORE SCHEMA & RELATIONSHIPS:
+- drivers: driverId (PK), driverRef, number, code, forename, surname, dob, nationality
+- constructors: constructorId (PK), constructorRef, name, nationality
+- circuits: circuitId (PK), circuitRef, name, location, country
+- races: raceId (PK), year, round, circuitId, name, date
+- results: resultId (PK), raceId, driverId, constructorId, number, grid, position, positionText, positionOrder, points, laps, time, milliseconds, fastestLap, rank, fastestLapTime, statusId
+- driver_standings: driverStandingsId (PK), raceId, driverId, points, position, wins
+- constructor_standings: constructorStandingsId (PK), raceId, constructorId, points, position, wins
+- qualifying: qualifyId (PK), raceId, driverId, constructorId, number, position, q1, q2, q3
+- status: statusId (PK), status ('Finished', 'Engine', 'Collision', etc.)
+- lap_times / pit_stops / sprint_results: link via raceId, driverId
 
-### circuits
-  circuitId (PK), circuitRef, name, location, country, lat, lng, alt, url
+## KEY RULES & DOMAIN KNOWLEDGE:
+1. ONLY generate valid MySQL SELECT queries (never DROP, UPDATE, DELETE, INSERT).
+2. Race wins: WHERE r.position = '1' in results table (position is VARCHAR string).
+3. Podiums: WHERE r.position IN ('1','2','3').
+4. DNFs: JOIN results with status table WHERE status.status != 'Finished'.
+5. Driver names: use forename and surname columns (e.g., d.forename = 'Lewis' AND d.surname = 'Hamilton').
+6. Team names: use constructors.name (e.g., 'Ferrari', 'McLaren', 'Red Bull').
+7. Circuits/Races: use LIKE with wildcards (e.g., ci.name LIKE '%Monza%' OR ra.name LIKE '%Italian%').
+8. European circuits: use country IN ('UK', 'Italy', 'Spain', 'Monaco', 'Belgium', 'Netherlands', 'Austria', 'Hungary', 'France', 'Germany', etc.).
+9. Championship winners: find driver_standings from the LAST race of that year (ORDER BY ra.round DESC LIMIT 1).
+10. Always add LIMIT 50 unless a specific limit is asked.
+11. Return ONLY the raw SQL query — no markdown code block, no explanations.
 
-### constructors
-  constructorId (PK), constructorRef, name, nationality, url
-
-### drivers
-  driverId (PK), driverRef, number, code, forename, surname, dob, nationality, url
-
-### seasons
-  year (PK), url
-
-### status
-  statusId (PK), status  (e.g. 'Finished', 'Engine', 'Collision', '+1 Lap')
-
-### races
-  raceId (PK), year, round, circuitId, name, date, time, url,
-  fp1_date, fp1_time, fp2_date, fp2_time, fp3_date, fp3_time,
-  quali_date, quali_time, sprint_date, sprint_time
-
-### results
-  resultId (PK), raceId, driverId, constructorId, number, grid, position,
-  positionText, positionOrder, points, laps, time, milliseconds,
-  fastestLap, `rank`, fastestLapTime, fastestLapSpeed, statusId
-
-### qualifying
-  qualifyId (PK), raceId, driverId, constructorId, number, position, q1, q2, q3
-
-### driver_standings
-  driverStandingsId (PK), raceId, driverId, points, position, positionText, wins
-
-### constructor_standings
-  constructorStandingsId (PK), raceId, constructorId, points, position, positionText, wins
-
-### constructor_results
-  constructorResultsId (PK), raceId, constructorId, points, status
-
-### lap_times
-  raceId, driverId, lap, position, time, milliseconds  (PK: raceId+driverId+lap)
-
-### pit_stops
-  raceId, driverId, stop, lap, time, duration, milliseconds  (PK: raceId+driverId+stop)
-
-### sprint_results
-  resultId (PK), raceId, driverId, constructorId, number, grid, position,
-  positionText, positionOrder, points, laps, time, milliseconds,
-  fastestLap, fastestLapTime, statusId
-
-## KEY RELATIONSHIPS:
-- results.raceId → races.raceId
-- results.driverId → drivers.driverId
-- results.constructorId → constructors.constructorId
-- results.statusId → status.statusId
-- races.circuitId → circuits.circuitId
-- qualifying, driver_standings, constructor_standings, lap_times, pit_stops
-  all link to races and drivers via raceId and driverId
-
-## IMPORTANT NOTES:
-- Race wins: position = '1' in the results table (position is VARCHAR, not INT)
-- Championship wins must be inferred from driver_standings (last race of season, position=1)
-- DNFs: join results with status table where status != 'Finished'
-- Podiums: position IN ('1','2','3') in results
-- Points are stored as FLOAT in results
-- Driver names: use forename and surname columns (not a single "name" column)
-- Constructor/team names: use the "name" column in constructors table
-
-## RULES:
-1. Generate ONLY valid MySQL SELECT queries — never INSERT, UPDATE, DELETE, DROP.
-2. Use EXACT table and column names listed above. NEVER guess or invent names.
-3. Use proper JOINs when linking tables.
-4. Use aliases for readability (e.g., d for drivers, r for results, ra for races).
-5. Add appropriate WHERE, GROUP BY, ORDER BY, and LIMIT clauses.
-6. For aggregations, use meaningful aliases (e.g., AS total_wins, AS avg_lap_time).
-7. Return ONLY the SQL query — no explanations, no markdown, just raw SQL.
-8. Always add LIMIT 50 unless the user specifies a different limit.
-9. For circuit or race names, ALWAYS use LIKE with wildcards — circuit names in the DB often
-   include prefixes (e.g., 'Circuit de Spa-Francorchamps', 'Autodromo Nazionale di Monza').
-   Example: WHERE ci.name LIKE '%Spa%' or WHERE ci.name LIKE '%Monza%'
-10. IMPORTANT circuit name lookups — the database stores OFFICIAL circuit names, not common names:
-   - Sao Paulo / Interlagos → ci.name LIKE '%Carlos Pace%' OR ra.name LIKE '%Brazil%' OR ra.name LIKE '%Paulo%'
-   - Spa → ci.name LIKE '%Spa%'
-   - Silverstone → ci.name LIKE '%Silverstone%'
-   - Monza → ci.name LIKE '%Monza%'
-   - Nürburgring → ci.name LIKE '%rburgring%'
-   - Imola → ci.name LIKE '%Imola%'
-   When unsure of the exact circuit name, search BOTH ci.name and ra.name (race name) columns.
-   Use OR to combine: (ci.name LIKE '%keyword%' OR ra.name LIKE '%keyword%')
-
-## F1 DOMAIN KNOWLEDGE (use this when needed):
-
-### Geography — European Circuits:
-The circuits.country column stores COUNTRY NAMES, NOT continents.
-European countries in F1: 'UK', 'Italy', 'Spain', 'Monaco', 'Belgium', 'Netherlands',
-'Austria', 'Hungary', 'France', 'Germany', 'Portugal', 'Turkey', 'Azerbaijan', 'Russia',
-'Switzerland', 'Sweden'
-Use IN (...) for continent-based filtering, NEVER use LIKE '%Europe%'.
-
-### Nationality vs Country:
-drivers.nationality uses demonyms (e.g., 'British', 'German', 'Brazilian')
-circuits.country uses country names (e.g., 'UK', 'Germany', 'Brazil')
-constructors.nationality also uses demonyms
-These do NOT match directly — do NOT join drivers.nationality = circuits.country.
-Common mappings: 'British'→'UK', 'Dutch'→'Netherlands', 'Monegasque'→'Monaco'
-
-### Team Name Changes (same team, different names over years):
-- Alpha Tauri → previously Toro Rosso → previously Minardi
-- Alpine → previously Renault
-- Alfa Romeo → previously Sauber
-- Aston Martin → previously Racing Point → previously Force India
-When querying a team's full history, use constructors.name IN (...) with all name variants.
-
-### Race Name Changes (same venue, different race names over years):
-- "São Paulo Grand Prix" (2021+) ← previously "Brazilian Grand Prix" (before 2021)
-  Both held at Autódromo José Carlos Pace (Interlagos), country = 'Brazil'
-- "Qatar Grand Prix" (2021+) — Lusail International Circuit
-- "Saudi Arabian Grand Prix" (2021+) — Jeddah Corniche Circuit
-- "Las Vegas Grand Prix" (2023+) — Las Vegas Strip Street Circuit
-- "Miami Grand Prix" (2022+) — Miami International Autodrome
-When user says "Brazilian race/GP" for recent years, use: ra.name LIKE '%Paulo%' OR ra.name LIKE '%Brazil%'
-When user says "Brazilian race/GP" without year, search both: (ra.name LIKE '%Paulo%' OR ra.name LIKE '%Brazil%')
-
-### Active Drivers:
-No explicit "active" flag. To find current/active drivers, check for results in recent years:
-e.g., WHERE ra.year >= 2023
-
-### Time & Duration:
-- results.milliseconds, lap_times.milliseconds, pit_stops.milliseconds → INTEGER (ms)
-- results.time, lap_times.time → VARCHAR string (e.g., '1:30.456', '+5.432')
-- For numeric comparisons and averages, always use the milliseconds column
-- To convert: milliseconds/1000.0 = seconds, milliseconds/60000.0 = minutes
-
-### Championship Winners:
-To find the World Champion of a season, get driver_standings from the LAST race of that year:
-```
-SELECT ds.* FROM driver_standings ds
-JOIN races ra ON ds.raceId = ra.raceId
-WHERE ra.year = YEAR AND ds.position = 1
-ORDER BY ra.round DESC LIMIT 1
-```
-Same pattern for constructor championships using constructor_standings.
-
-## DATABASE SCHEMA CONTEXT (from RAG):
+## RELEVANT RETRIEVED SCHEMA:
 {schema_context}
 """
 
 FEW_SHOT_EXAMPLES = """
 ## EXAMPLES:
-
 Question: Who has the most race wins in F1 history?
 SQL: SELECT d.forename, d.surname, COUNT(*) AS wins FROM results r JOIN drivers d ON r.driverId = d.driverId WHERE r.position = '1' GROUP BY d.driverId, d.forename, d.surname ORDER BY wins DESC LIMIT 10;
-
-Question: How many races has Lewis Hamilton won?
-SQL: SELECT d.forename, d.surname, COUNT(*) AS wins FROM results r JOIN drivers d ON r.driverId = d.driverId WHERE r.position = '1' AND d.surname = 'Hamilton' AND d.forename = 'Lewis' GROUP BY d.driverId, d.forename, d.surname;
 
 Question: What are the top 5 constructors by total points?
 SQL: SELECT c.name, SUM(r.points) AS total_points FROM results r JOIN constructors c ON r.constructorId = c.constructorId GROUP BY c.constructorId, c.name ORDER BY total_points DESC LIMIT 5;
@@ -166,14 +43,8 @@ SQL: SELECT c.name, SUM(r.points) AS total_points FROM results r JOIN constructo
 Question: Show the 2023 race calendar
 SQL: SELECT ra.round, ra.name, ra.date, ci.location, ci.country FROM races ra JOIN circuits ci ON ra.circuitId = ci.circuitId WHERE ra.year = 2023 ORDER BY ra.round;
 
-Question: Compare Verstappen and Hamilton's career stats
-SQL: SELECT d.surname, COUNT(*) AS races, SUM(CASE WHEN r.position = '1' THEN 1 ELSE 0 END) AS wins, SUM(CASE WHEN r.position IN ('1','2','3') THEN 1 ELSE 0 END) AS podiums, SUM(r.points) AS total_points FROM results r JOIN drivers d ON r.driverId = d.driverId WHERE d.surname IN ('Verstappen', 'Hamilton') GROUP BY d.driverId, d.surname;
-
-Question: What is the average pit stop time at Monaco?
-SQL: SELECT AVG(ps.milliseconds)/1000 AS avg_pit_stop_seconds FROM pit_stops ps JOIN races ra ON ps.raceId = ra.raceId JOIN circuits ci ON ra.circuitId = ci.circuitId WHERE ci.name LIKE '%Monaco%';
-
-Question: How many wins does Schumacher have at Spa?
-SQL: SELECT d.forename, d.surname, COUNT(*) AS wins FROM results r JOIN drivers d ON r.driverId = d.driverId JOIN races ra ON r.raceId = ra.raceId JOIN circuits ci ON ra.circuitId = ci.circuitId WHERE r.position = '1' AND ci.name LIKE '%Spa%' AND d.surname = 'Schumacher' GROUP BY d.driverId, d.forename, d.surname;
+Question: Compare Verstappen and Hamilton career wins
+SQL: SELECT d.surname, COUNT(*) AS wins FROM results r JOIN drivers d ON r.driverId = d.driverId WHERE r.position = '1' AND d.surname IN ('Verstappen', 'Hamilton') GROUP BY d.driverId, d.surname;
 """
 
 USER_PROMPT_TEMPLATE = """Question: {question}

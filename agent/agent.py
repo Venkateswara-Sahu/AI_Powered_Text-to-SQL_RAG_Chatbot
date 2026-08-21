@@ -50,7 +50,7 @@ class SQLAgent:
             api_key=Config.GROQ_API_KEY,
             model=Config.GROQ_MODEL,
             temperature=0.1,
-            max_tokens=3000,
+            max_tokens=800,
         )
         self.graph = self._build_graph()
         print("[Agent] LangGraph agent initialized.")
