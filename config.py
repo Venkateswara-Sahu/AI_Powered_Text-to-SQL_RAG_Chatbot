@@ -24,5 +24,5 @@ class Config:
     FLASK_DEBUG = os.getenv("FLASK_DEBUG", "True").lower() == "true"
 
     # RAG Settings
-    TOP_K_SCHEMA_RESULTS = 5
+    TOP_K_SCHEMA_RESULTS = 7
     MAX_RETRY_ATTEMPTS = 2
