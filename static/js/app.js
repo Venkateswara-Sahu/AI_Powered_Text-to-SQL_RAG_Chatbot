@@ -510,11 +510,13 @@ function renderChatList() {
             lastDateLabel = '';
         }
         if (!chat.pinned) {
-            const chatDate = new Date(chat.created_at || chat.createdAt).toDateString();
+            const rawDate = chat.updated_at || chat.updatedAt || chat.created_at || chat.createdAt;
+            const chatDateObj = rawDate ? new Date(rawDate) : new Date();
+            const chatDate = chatDateObj.toDateString();
             let dateLabel;
             if (chatDate === today) dateLabel = 'Today';
             else if (chatDate === yesterday) dateLabel = 'Yesterday';
-            else dateLabel = new Date(chat.created_at || chat.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            else dateLabel = chatDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             if (dateLabel !== lastDateLabel) {
                 html += `<div class="sidebar-date-label">${dateLabel}</div>`;
                 lastDateLabel = dateLabel;
