@@ -10,12 +10,26 @@ pinned: false
 
 # 🏎️ F1InsightAI — AI-Powered Formula 1 Text-to-SQL RAG Chatbot
 
-An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural language questions into SQL queries over a comprehensive Formula 1 database (1950–2024) hosted on **TiDB Cloud**. Built with Flask, a LangGraph agentic pipeline, Groq API (GPT OSS 120B), and FAISS-based RAG for schema-aware SQL generation.
+An evaluated Text-to-SQL application that converts natural-language Formula 1 questions into read-only SQL over 700,000+ records in 14 TiDB tables. It combines a nine-node LangGraph workflow, FAISS schema retrieval, a Groq-hosted LLM, Flask, and Docker.
+
+This was the Jan–May 2026 industry project for **TransOrg Analytics (Pickl.AI) × Lovely Professional University**. I led its technical implementation; the academic submission was completed as a group project.
+
+[Live Hugging Face demo](https://huggingface.co/spaces/RiverStead/Text-to-SQL_RAG_Chatbot)
+
+## Evaluation snapshot
+
+| Measure | Result | Scope |
+|---|---:|---|
+| First-attempt SQL accuracy | **83.3% (15/18)** | 18 SQL-generating questions in the recorded 20-query benchmark |
+| Schema-retrieval MRR | **0.12 → 0.25 → 0.67** | Three documented retrieval iterations |
+| Database | **700,000+ rows** | 14 Formula 1 data tables in TiDB Cloud |
+
+The retry path is implemented for execution errors, but the recorded benchmark contains no retry cases. The results above should be read as a project evaluation, not a production-service claim. See [`tests/benchmark_results.json`](tests/benchmark_results.json) and [`REPORT.md`](REPORT.md) for the recorded methodology and results.
 
 ## ✨ Features
 
 ### Core
-- **Natural Language to SQL** — Ask questions about F1 in plain English, get accurate SQL queries
+- **Natural Language to SQL** — Ask questions about F1 in plain English and inspect the generated SQL and results
 - **RAG-Powered Schema Retrieval** — FAISS + sentence-transformers for context-aware SQL generation
 - **LangGraph Agentic Pipeline** — Multi-step reasoning with classify → retrieve → generate → execute → reflect → answer
 - **Auto-Retry with Error Feedback** — If a query fails, the agent gets the error and automatically fixes the SQL
@@ -24,18 +38,16 @@ An AI-powered RAG (Retrieval-Augmented Generation) chatbot that converts natural
 - **RAG Evaluation Metrics** — Live MRR, Recall@K, Context Relevance, and Faithfulness scores displayed per query
 
 ### User Experience
-- **🎬 Cinematic "Kinetic Cockpit" Interface** — tsParticles network background, mouse-following spotlight, telemetry grid overlay, 3D card tilt on hover
+- **Responsive data interface** — Query results, telemetry, visualizations, and follow-up controls in one view
 - **📊 Auto Chart Visualizations** — Bar, pie, and line charts auto-generated with distinct F1-themed colors
 - **💡 AI Follow-up Suggestions** — LLM-generated follow-up questions appear as clickable pill chips
 - **📌 Pin & Rename Chats** — Pin important conversations and rename them for easy reference
 - **⋮ ChatGPT-Style Three-Dot Menu** — Hover to reveal dots, click for dropdown with Rename/Pin/Delete
-- **🧠 Agent Reasoning** — Collapsible accordion showing each step of the AI's thinking process
-- **✨ Rotating Conic Border** — Animated glow effect on the search input using `@property` CSS
-- **🎯 Animated Hero Title** — Multi-stop gradient animation with flowing color effect
+- **🧠 Execution trace** — Collapsible view of application pipeline steps and evaluation signals
 - **SQL Syntax Highlighting** — Color-coded keywords in a dark IDE-style card
 - **CSV Export** — Download any query result table as a `.csv` file
 - **SQL Download** — Download generated SQL as a `.sql` file
-- **Glassmorphism UI** — Frosted-glass cards, staggered cascade animations, responsive design
+- **Responsive UI** — Desktop and mobile layouts for query results and charts
 - **📊 RAG Evaluation Card** — Live retrieval quality metrics (MRR, Recall@K, Context Relevance, Faithfulness) in the bento grid
 - **🐳 Docker Ready** — Dockerfile + Docker Compose for one-command deployment
 
@@ -197,10 +209,10 @@ Project/
 │   └── sql_generator.py      # Groq LLM calls — SQL gen, auto-retry, answer gen
 │
 ├── templates/
-│   └── index.html            # Cinematic Data Interface (tsParticles + bento grid + spotlight + grid overlay)
+│   └── index.html            # Browser interface for chat, results, and telemetry
 │
 ├── static/
-│   ├── css/styles.css        # Glassmorphism dark theme, cinematic effects (spotlight, grid, conic border, 3D tilt)
+│   ├── css/styles.css        # Responsive visual styling
 │   └── js/app.js             # Chat engine, bento renderer, chart rendering, three-dot menu, card tilt
 │
 ├── Dockerfile                # Container build config
