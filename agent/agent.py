@@ -344,6 +344,7 @@ class SQLAgent:
 
         return {
             "execution_result": result,
+            "sql": result.get("executed_sql", sql),
             "agent_steps": state.get("agent_steps", []) + [step],
         }
 
@@ -530,7 +531,7 @@ class SQLAgent:
             return {"follow_ups": []}
 
     def _compute_rag_metrics(self, state: AgentState, answer: str) -> dict:
-        """Compute RAG evaluation metrics: MRR, Recall@K, Context Relevance, Faithfulness."""
+        """Compute generated-SQL table proxies and result-value substring coverage."""
         sql = state.get("sql", "")
         retrieved_tables = state.get("retrieved_tables", [])
         execution_result = state.get("execution_result", {})
@@ -545,14 +546,9 @@ class SQLAgent:
         if not tables_in_sql:
             return {}
 
-        # ── MRR (Mean Reciprocal Rank) ──
-        # Find the rank of the first SQL-used table in the FAISS results
-        mrr = 0.0
-        for needed_table in tables_in_sql:
-            if needed_table in retrieved_names:
-                rank = retrieved_names.index(needed_table) + 1
-                mrr = 1.0 / rank
-                break  # MRR uses the FIRST relevant result
+        # Single-query reciprocal rank (generated SQL supplies relevance).
+        mrr = next((1.0 / rank for rank, table in enumerate(retrieved_names, 1)
+                    if table in tables_in_sql), 0.0)
 
         # ── Recall@K ──
         # Of all tables needed by SQL, how many were retrieved?
@@ -569,6 +565,10 @@ class SQLAgent:
         faithfulness = self.tools.compute_faithfulness(answer, execution_result)
 
         return {
+            "relevance_source": "generated_sql_table_proxy",
+            "answer_check_type": "result_value_substring_coverage",
+            "reciprocal_rank": round(mrr, 4),
+            # Compatibility key; this is one query's RR, not a dataset mean.
             "mrr": round(mrr, 4),
             "recall_at_k": round(recall_at_k, 4),
             "k": k,
@@ -627,6 +627,7 @@ class SQLAgent:
                     "columns": result.get("columns", []),
                     "rows": result.get("rows", []),
                     "row_count": result.get("row_count", 0),
+                    "row_limit": result.get("row_limit"),
                 } if result.get("success") else None,
                 "execution_time": elapsed,
                 "follow_ups": final_state.get("follow_ups", []),

@@ -2,6 +2,9 @@
 
 ## Project Report
 
+> Updated 4 October 2026: current claim definitions and software corrections are in [the evaluation audit](docs/evaluation-audit.md). Historical examples describe development observations, not independent accuracy validation. No fresh live model/database run is claimed.
+
+
 ---
 
 **Project Title:** F1InsightAI — AI-Powered Formula 1 Text-to-SQL RAG Chatbot  
@@ -68,7 +71,7 @@ How can we build an intelligent chatbot that:
 1. **Implement a RAG pipeline** using FAISS vector search and sentence-transformer embeddings for schema-aware SQL generation
 2. **Build a multi-step agentic pipeline** using LangGraph with intent classification, SQL generation, execution, reflection, and auto-retry
 3. **Develop a cinematic frontend** with glassmorphism design, auto-generated charts, and conversation management
-4. **Ensure robustness** through read-only SQL enforcement, connection pooling with retry logic, and graceful error handling
+4. **Add execution controls** through a shared SELECT policy, connection pooling with retry logic, and graceful error handling
 5. **Deploy on cloud infrastructure** using TiDB Cloud for the database and Groq API for LLM inference
 
 ---
@@ -92,7 +95,7 @@ We picked RAG over fine-tuning for a few practical reasons. First, fine-tuning a
 The main benefits we saw in practice were:
 
 - The LLM stopped hallucinating table names that don't exist when we limited the context to only relevant tables
-- SQL accuracy went up because the model wasn't distracted by unrelated schema
+- Retrieval narrows the schema context; a controlled SQL-accuracy improvement has not been established
 - We could scale to more tables without worrying about context window limits
 
 ### 5.3 Agentic AI Pipelines
@@ -315,7 +318,7 @@ When a user asks a question:
 2. FAISS performs a **top-7 nearest neighbor search** against the indexed schema documents
 3. **Co-occurrence rules** automatically inject related tables (e.g., `results` → `drivers`, `races` → `circuits`)
 4. The relevant table descriptions are concatenated and injected into the LLM system prompt
-5. The LLM generates SQL using **only the relevant tables**, improving accuracy
+5. The LLM generates SQL using the retrieved schema context
 
 ### 9.4 RAG Pipeline Diagram
 
@@ -379,7 +382,7 @@ class AgentState(TypedDict):
     agent_steps: list          # Trace of agent reasoning steps
     error: str                 # Error message if any
     is_database_query: bool    # Whether the question needs SQL
-    rag_metrics: dict          # RAG evaluation metrics (MRR, Recall, Faithfulness)
+    rag_metrics: dict          # Retrieval/result-value proxy diagnostics
 ```
 
 ### 10.2 Node Descriptions
@@ -390,7 +393,7 @@ class AgentState(TypedDict):
 | 2 | `direct_answer` | Answers general/conversational questions directly | Natural language response → END |
 | 3 | `retrieve_schema` | Uses RAG (FAISS) to find the top-7 most relevant tables + co-occurrence injection | Schema context string |
 | 4 | `generate_sql` | LLM generates a SQL SELECT query using schema context | SQL query string |
-| 5 | `execute_sql` | Executes SQL on TiDB Cloud (read-only enforced) | Columns + rows |
+| 5 | `execute_sql` | Executes policy-checked SELECT queries on TiDB Cloud | Columns + rows |
 | 6 | `reflect` | Evaluates execution results — success or error? | Routes to `retry_sql` or `generate_answer` |
 | 7 | `retry_sql` | Feeds the error back to the LLM to fix the SQL | Corrected SQL → back to `execute_sql` |
 | 8 | `generate_answer` | LLM summarizes results in conversational English | Answer string |
@@ -465,7 +468,7 @@ Each response renders up to 7 cards:
 | Table | 12 cols | Scrollable result table with CSV export |
 | Agent Steps | 6 cols | Collapsible accordion showing each reasoning step |
 | SQL | 6 cols | Syntax-highlighted SQL with copy/download buttons |
-| RAG Metrics | 12 cols | MRR, Recall@K, Context Relevance, Faithfulness (color-coded) |
+| RAG Metrics | 12 cols | Reciprocal-rank/table-recall proxies and result-value coverage |
 | Follow-ups | 12 cols | Clickable pill buttons for suggested next questions |
 
 ### 11.4 Smart Chart Generation
@@ -745,106 +748,64 @@ The system prompt includes critical F1-specific knowledge to improve SQL accurac
 | "Average pit stop time at Monaco" | `AVG(milliseconds) LIKE '%Monaco%'` | ✅ Correct average |
 | "What is DRS?" | Classified as conversation | ✅ Direct answer (no SQL) |
 
-### 14.2 Automated Benchmark (20 Queries)
+### 14.2 Historical Smoke Benchmark (20 Questions)
 
-A benchmark script (`tests/benchmark.py`) was created to systematically test 20 diverse queries across 9 categories. The script sends each query to the `/api/chat` endpoint, validates the response against expected keywords, and records accuracy, response time, and retry counts.
+The unchanged March 25, 2026 artifact contains 18 SQL and two conversational
+questions. Fifteen SQL-question cases passed generated-SQL, nonempty-result
+and answer-keyword checks: **15/18 (83.3%)**. Some cases have no answer keywords.
+These checks do not establish reference-result correctness or first-attempt accuracy.
 
-**Benchmark Date:** March 25, 2026  
-**Test Suite:** 20 queries (18 SQL + 2 conversational)
+The historical script read steps while the API returned agent_steps, so
+its zero retry counts are not reliable evidence that retries were absent.
+The default 100% retry-success field has no denominator. Failure/timeout
+durations were omitted from the latency numerator. Historical aggregate
+latency and retry figures are therefore not retained as performance claims.
 
-### 14.3 Performance Results
+The historical database inventory reported 701,530 rows in 16 tables:
+14 F1 data tables plus the messages and conversations application tables.
+This is documented project scope, not a fresh count.
 
-| Metric | Value |
-|--------|-------|
-| Total Queries Tested | 20 |
-| SQL Query Accuracy (first attempt) | **83.3%** (15/18) |
-| Queries Needing Retry | 0 |
-| Average Response Time | 21.66s |
-| Min Response Time | 5.97s |
-| Max Response Time | 48.20s |
-| Database Size | 16 tables, 701,530 rows |
+### 14.3 Corrected Benchmark and Reproducibility
 
-### 14.4 Results by Category
+The v2 benchmark records smoke-check pass counts, raw API responses,
+retry-trace availability, observed retries, suite/code hashes and all request
+durations. Empty denominators are null. Each run writes a new artifact.
+The original March artifact remains available and cannot be overwritten by
+the command. See [the audit](docs/evaluation-audit.md) for commands and limits.
 
-| Category | Passed | Total | Accuracy |
-|----------|--------|-------|----------|
-| Driver Stats | 4 | 4 | 100% |
-| Race Queries | 2 | 3 | 67% |
-| Circuit Queries | 1 | 1 | 100% |
-| Team Queries | 1 | 2 | 50% |
-| Pit Stops | 1 | 1 | 100% |
-| Lap Times | 1 | 1 | 100% |
-| Comparison | 1 | 1 | 100% |
-| Historical | 2 | 2 | 100% |
-| Qualifying | 1 | 1 | 100% |
-| Sprint | 1 | 1 | 100% |
-| Edge Case (São Paulo) | 0 | 1 | 0% |
+Offline Python and JavaScript regression tests verify these software
+contracts. They do not measure new LLM performance or live TLS connectivity.
 
-### 14.5 Failure Analysis
+### 14.4 Retrieval and Answer Diagnostics
 
-| Query | Status | Root Cause |
-|-------|--------|-----------|
-| "Race winners at Spa" | VALIDATION_FAIL | SQL returned correct data but LLM answer didn't explicitly mention "Schumacher" |
-| "Most constructors championships" | VALIDATION_FAIL | LLM answer phrasing didn't exactly match the validation keyword "ferrari" |
-| "2023 São Paulo GP results" | ERROR | Groq API rate limit hit (100K TPD) — query #20 exhausted the daily token quota |
+| Diagnostic | Current meaning | Limit |
+|---|---|---|
+| Reciprocal rank | Reciprocal of the best-ranked retrieved table referenced by generated SQL | Per-query RR; generated SQL is a relevance proxy |
+| Table recall proxy @K | Fraction of SQL-referenced physical tables retrieved | A wrong SQL query can supply misleading relevance labels |
+| Table usage ratio | Fraction of retrieved tables referenced by generated SQL | Context usage, not semantic relevance |
+| Result-value coverage | Substring coverage of eligible values from the first five result rows | Not semantic faithfulness; no eligible values means not measured |
 
-> **Note:** The VALIDATION_FAIL status indicates the SQL executed correctly and returned results, but the natural language answer didn't contain the expected validation keyword. This is an LLM phrasing issue, not an SQL generation issue. The São Paulo query failure was caused by API rate limiting, not a code defect.
+Parsed scopes handle qualified tables and CTE aliases. The legacy mrr and
+faithfulness_score API keys remain for compatibility; the UI uses the
+narrower diagnostic names. The historical MRR change 0.12 to 0.25 to 0.67
+has no recovered reproducible aggregate and is not a current performance claim.
 
-### 14.6 Known Limitations
+Implemented retrieval changes include filtering out messages and
+conversations, enriching schema descriptions, increasing retrieval context
+and using table co-occurrence rules. Their independent accuracy benefit
+has not been established.
 
-| Limitation | Details |
-|------------|--------|
-| **Groq API Rate Limit** | Free tier: 100,000 tokens/day (TPD). The 20-query benchmark consumed ~95K tokens, leaving insufficient quota for additional queries. Resets daily. |
-| **LLM Response Variability** | The same query may produce slightly different SQL or answer phrasing on different runs due to LLM non-determinism (temperature=0.1). |
-| **No Persistent Vector Index** | FAISS index is rebuilt in-memory on every app restart (~5-10 seconds). |
+### 14.5 SQL Execution Controls
 
-### 14.7 RAG Evaluation Metrics
+A shared parsed SELECT policy rejects multiple statements, writes, INTO,
+locking, session variables, executable comments/hints and unknown functions.
+Outer result limits are enforced and the API displays the executed query.
+TLS-enabled pool and fallback connections verify certificate and hostname.
 
-To measure and improve retrieval quality, four live RAG evaluation metrics are computed for every SQL query and displayed in a dedicated bento grid card:
-
-| Metric | Definition | Formula |
-|--------|-----------|--------|
-| **MRR** (Mean Reciprocal Rank) | Rank of the first SQL-used table in FAISS results | `1 / rank_of_first_relevant_table` |
-| **Recall@K** | Fraction of SQL-needed tables that were retrieved | `tables_found / tables_needed` |
-| **Context Relevance** | Fraction of retrieved tables actually used in SQL | `relevant_retrieved / total_retrieved` |
-| **Faithfulness** | Fraction of SQL result values present in the answer | `matched_values / total_values` |
-
-**Proxy ground truth:** Since pre-defined ground truth tables are unavailable for live queries, the system uses the generated SQL as proxy ground truth — parsing table names from `FROM` and `JOIN` clauses via regex.
-
-#### Three-Round Iterative Improvement
-
-Three optimizations were applied iteratively, with metrics measured after each round:
-
-**Round 1 (Baseline):** Raw FAISS retrieval with no filtering.
-**Round 2:** Excluded system tables (`messages`, `conversations`) and added semantic enrichment keywords to table descriptions.
-**Round 3:** Enhanced keyword coverage, increased top_k from 5 to 7, and added table co-occurrence rules.
-
-| Query | MRR (R1→R2→R3) | Recall (R1→R2→R3) |
-|-------|----------------|-------------------|
-| Podium most often | 0.00 → 0.00 → **1.00** | 0% → 0% → **50%** |
-| Qualifying Silverstone | 0.00 → 0.25 → **1.00** | 0% → 50% → **50%** |
-| Verstappen wins 2023 | 0.25 → 0.25 → **1.00** | 33% → 33% → **67%** |
-| Ferrari points 2023 | 0.20 → 0.50 → **0.33** | 33% → 67% → **33%** |
-| Japan circuits | 0.25 → 0.25 → **0.33** | 100% → 100% → **100%** |
-| Hamilton vs Verstappen | — → — → **0.33** | — → — → **100%** |
-| Constructors champs | — → — → **0.33** | — → — → **100%** |
-
-**Key improvements:**
-- MRR average improved from **0.12 → 0.25 → 0.67** (5.5× improvement)
-- Three queries went from MRR=0.00 to MRR=1.00
-- Faithfulness consistently **87–100%** across all queries
-- `messages` table (a system table) was completely eliminated from retrievals
-
-#### Optimization Techniques Applied
-
-| Technique | Description |
-|-----------|------------|
-| **System table exclusion** | `messages` and `conversations` tables excluded from FAISS indexing |
-| **Semantic enrichment** | Domain-specific keywords (e.g., "wins", "podiums", "Ferrari") added to table descriptions |
-| **Co-occurrence rules** | If `results` is retrieved, `drivers` is auto-included; if `races` is retrieved, `circuits` is auto-included |
-| **Increased top_k** | Retrieval window increased from 5 to 7 (covering 50% of F1 tables) |
-
----
+Application query validation does not establish database-level permissions
+or query CPU limits. The current account also writes conversation history.
+No secure multi-user deployment or separately enforced read-only database
+identity is claimed. See the audit for remaining deployment requirements.
 
 ## 15. Future Scope
 
@@ -854,11 +815,12 @@ There are several areas where F1InsightAI can be improved and extended in future
 
 ## 16. Conclusion
 
-Building F1InsightAI taught us a lot about how RAG and agentic pipelines work together in practice. The biggest takeaway was that sending only the relevant tables to the LLM (instead of everything) made a noticeable difference in SQL accuracy. Our MRR scores improved from 0.12 to 0.67 across three rounds of RAG optimization, and the model stopped generating queries that referenced tables which didn't exist. The retry mechanism also proved its worth — in our benchmark testing, queries that failed on the first attempt were often corrected automatically on the second try without the user having to do anything.
-
-On the frontend side, we spent a good amount of time making the interface feel polished and presentable. The dark-themed design with the spotlight effect, animated card reveals, and the bento-grid layout turned what could have been a plain chatbot into something that actually looks like a finished product. Features like conversation pinning, inline renaming, the two-click delete pattern, and auto-generated Chart.js visualizations made the whole experience feel complete rather than like a demo.
-
-The system isn't perfect — complex multi-table joins with ambiguous questions still trip it up sometimes, and the FAISS index gets rebuilt on every restart since we haven't implemented persistent indexing yet. But for the scope of a capstone project, it covers the core concepts well: RAG for context retrieval, an agentic pipeline for multi-step processing, cloud database integration with TiDB, and a frontend that's ready to present. The interactive Architecture page we added at the end ties everything together by giving reviewers a visual walkthrough of how the whole system works under the hood.
+F1InsightAI demonstrates a modular Text-to-SQL workflow combining schema
+retrieval, conditional agent routing, query execution, error-guided correction
+and API delivery. The historical evidence supports bounded smoke-check results.
+The repaired evaluator, execution policy and diagnostics make those limits
+explicit and testable. Independent result-equivalence evaluation is still
+needed before claiming SQL execution accuracy or numerical retrieval gains.
 
 ---
 
@@ -885,7 +847,7 @@ The landing page features a **tsParticles animated background**, the F1InsightAI
 
 ### A.2 Query Result — Bento Grid Layout
 
-After asking *"Who has the most race wins?"*, the system displays results in a **bento-grid layout**: a scrollable data table (Hamilton 105, Schumacher 91, Verstappen 63...), **syntax-highlighted SQL** with copy/download buttons, a collapsible **Agent Reasoning** accordion, **RAG evaluation metrics** (MRR, Recall@K, Context Relevance, Faithfulness), and **AI-generated follow-up suggestions** as clickable pills.
+After asking *"Who has the most race wins?"*, the system displays results in a **bento-grid layout**: a scrollable data table (Hamilton 105, Schumacher 91, Verstappen 63...), **syntax-highlighted SQL** with copy/download buttons, a collapsible **Agent Reasoning** accordion, **retrieval diagnostics** (generated-SQL table proxies and result-value coverage), and **AI-generated follow-up suggestions** as clickable pills.
 
 ### A.3 Agent Reasoning — Pipeline Transparency
 

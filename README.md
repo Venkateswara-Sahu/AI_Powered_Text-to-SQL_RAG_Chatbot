@@ -10,7 +10,7 @@ pinned: false
 
 # 🏎️ F1InsightAI — AI-Powered Formula 1 Text-to-SQL RAG Chatbot
 
-An evaluated Text-to-SQL application that converts natural-language Formula 1 questions into read-only SQL over 700,000+ records in 14 TiDB tables. It combines a nine-node LangGraph workflow, FAISS schema retrieval, a Groq-hosted LLM, Flask, and Docker.
+A Text-to-SQL prototype that converts natural-language Formula 1 questions into SELECT queries over a documented 700,000+ records in 14 TiDB data tables. It combines a nine-node LangGraph workflow, FAISS schema retrieval, a Groq-hosted LLM, Flask, and Docker.
 
 This was the Jan–May 2026 industry project for **TransOrg Analytics (Pickl.AI) × Lovely Professional University**. I led its technical implementation; the academic submission was completed as a group project.
 
@@ -20,11 +20,36 @@ This was the Jan–May 2026 industry project for **TransOrg Analytics (Pickl.AI)
 
 | Measure | Result | Scope |
 |---|---:|---|
-| First-attempt SQL accuracy | **83.3% (15/18)** | 18 SQL-generating questions in the recorded 20-query benchmark |
-| Schema-retrieval MRR | **0.12 → 0.25 → 0.67** | Three documented retrieval iterations |
+| Historical SQL-question smoke checks | **15/18 (83.3%)** | Generated SQL, nonempty results and expected answer keywords; not reference-result equivalence or first-attempt accuracy |
+| Historical retry success | **Not established** | The old benchmark read `steps`, while the API returns `agent_steps`; recorded zero counts cannot establish that retries were absent |
+| Retrieval improvement | **No validated aggregate claimed** | Schema enrichment, system-table filtering and co-occurrence rules are implemented; historical MRR aggregation is unresolved |
 | Database | **700,000+ rows** | 14 Formula 1 data tables in TiDB Cloud |
 
-The retry path is implemented for execution errors, but the recorded benchmark contains no retry cases. The results above should be read as a project evaluation, not a production-service claim. See [`tests/benchmark_results.json`](tests/benchmark_results.json) and [`REPORT.md`](REPORT.md) for the recorded methodology and results.
+The [March 2026 artifact](tests/benchmark_results.json) remains unchanged. Its legacy accuracy, retry and timing fields must be interpreted using the [evaluation audit](docs/evaluation-audit.md). No fresh live model/database benchmark is claimed by the repair. Offline regression tests establish the corrected software behavior, not model accuracy or deployment readiness.
+
+### Reproduce the software checks
+
+```bash
+python -m pip install -r requirements-test.txt
+python -m pytest -q
+node tests/metric_bar_check.cjs
+```
+
+To run a fresh smoke benchmark against your running API:
+
+```bash
+python tests/benchmark.py --api-url http://localhost:5000/api/chat
+```
+
+Each run creates a new JSON artifact under `artifacts/benchmarks/`, including the suite/code hashes, raw API responses, trace availability and observed retries. Unexercised retry rates are `null`. These checks still use answer keywords; independent reference SQL/results and a fixed database snapshot are needed before claiming execution accuracy.
+
+### SQL execution boundary
+
+Agent validation and database execution share a parsed MySQL query policy. It accepts one SELECT query, including supported CTE/UNION queries, and rejects writes, locking, session variables, executable comments, optimizer hints and unknown functions. An outer result cap is applied even when a literal or inner query contains `LIMIT`; the API returns the SQL actually executed.
+
+With `MYSQL_SSL=true`, both pooled and fallback connections verify the certificate and hostname against `MYSQL_SSL_CA` (defaults to the certifi CA bundle). A TLS verification failure is not retried with verification disabled. The default query result cap is 50 rows; `SQL_MAX_ROWS` also bounds explicitly requested connector limits.
+
+These are application controls. Database grants, query execution-time limits and live TLS connectivity have not been verified here. Conversation storage currently uses the same connection account and needs writes, so this project does not claim a separately enforced read-only database identity. Use restricted grants and isolate generated-query credentials before exposing sensitive data.
 
 ## ✨ Features
 
@@ -32,10 +57,10 @@ The retry path is implemented for execution errors, but the recorded benchmark c
 - **Natural Language to SQL** — Ask questions about F1 in plain English and inspect the generated SQL and results
 - **RAG-Powered Schema Retrieval** — FAISS + sentence-transformers for context-aware SQL generation
 - **LangGraph Agentic Pipeline** — Multi-step reasoning with classify → retrieve → generate → execute → reflect → answer
-- **Auto-Retry with Error Feedback** — If a query fails, the agent gets the error and automatically fixes the SQL
-- **Read-Only SQL Enforcement** — Only SELECT queries are allowed; all write operations are blocked
+- **Error-Guided Retry Path** — The agent can attempt SQL correction after an execution error; successful correction is not guaranteed
+- **SQL Execution Policy** — Shared parsed SELECT validation, side-effect checks and bounded result rows
 - **Groq API** — Lightning-fast inference using GPT OSS 120B (free tier)
-- **RAG Evaluation Metrics** — Live MRR, Recall@K, Context Relevance, and Faithfulness scores displayed per query
+- **Retrieval Diagnostics** — Per-query reciprocal rank and table recall use generated SQL as a relevance proxy; answer checks measure result-value substring coverage
 
 ### User Experience
 - **Responsive data interface** — Query results, telemetry, visualizations, and follow-up controls in one view
@@ -48,7 +73,7 @@ The retry path is implemented for execution errors, but the recorded benchmark c
 - **CSV Export** — Download any query result table as a `.csv` file
 - **SQL Download** — Download generated SQL as a `.sql` file
 - **Responsive UI** — Desktop and mobile layouts for query results and charts
-- **📊 RAG Evaluation Card** — Live retrieval quality metrics (MRR, Recall@K, Context Relevance, Faithfulness) in the bento grid
+- **📊 Diagnostics Card** — Proxy definitions are visible; checks with no eligible values display “Not measured”
 - **🐳 Docker Ready** — Dockerfile + Docker Compose for one-command deployment
 
 ## 🛠️ Tech Stack
@@ -152,6 +177,8 @@ MYSQL_USER=your_tidb_user
 MYSQL_PASSWORD=your_tidb_password
 MYSQL_DATABASE=f1db
 MYSQL_SSL=true
+# MYSQL_SSL_CA=/path/to/trusted-ca-bundle.pem  # optional custom CA
+SQL_MAX_ROWS=500
 GROQ_API_KEY=your_groq_api_key
 ```
 

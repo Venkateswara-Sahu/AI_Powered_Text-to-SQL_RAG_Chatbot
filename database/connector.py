@@ -1,17 +1,11 @@
 import mysql.connector
 from mysql.connector import pooling, Error
 from config import Config
+from database.sql_policy import prepare_read_query, validate_read_query
 
 
 class DatabaseConnector:
     """Manages MySQL connection pool and safe query execution."""
-
-    # SQL keywords that are NOT allowed (write operations)
-    BLOCKED_KEYWORDS = [
-        "DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE",
-        "CREATE", "REPLACE", "RENAME", "GRANT", "REVOKE", "LOCK",
-        "UNLOCK", "CALL", "EXEC", "EXECUTE", "SET", "LOAD"
-    ]
 
     def __init__(self):
         """Initialize MySQL connection pool."""
@@ -31,8 +25,7 @@ class DatabaseConnector:
 
             # TiDB Cloud requires SSL/TLS
             if Config.MYSQL_SSL:
-                pool_config["ssl_verify_cert"] = False
-                pool_config["ssl_verify_identity"] = False
+                pool_config.update(self._tls_options())
 
             self.pool = pooling.MySQLConnectionPool(**pool_config)
             print(f"[DB] Connected to MySQL ({Config.MYSQL_HOST}:{Config.MYSQL_PORT}/{Config.MYSQL_DATABASE})")
@@ -56,22 +49,17 @@ class DatabaseConnector:
                 "use_unicode": True,
             }
             if Config.MYSQL_SSL:
-                connect_args["ssl_verify_cert"] = False
-                connect_args["ssl_verify_identity"] = False
+                connect_args.update(self._tls_options())
             return mysql.connector.connect(**connect_args)
 
     def _is_safe_query(self, sql: str) -> bool:
-        """Check if the SQL query is read-only (SELECT only)."""
-        cleaned = sql.strip().upper()
-        # Must start with SELECT, WITH, or SHOW
-        if not (cleaned.startswith("SELECT") or cleaned.startswith("WITH") or cleaned.startswith("SHOW")):
-            return False
-        # Block dangerous keywords (check outside of string literals)
-        for keyword in self.BLOCKED_KEYWORDS:
-            # Simple check: look for the keyword as a standalone word
-            if f" {keyword} " in f" {cleaned} ":
-                return False
-        return True
+        """Apply the same parsed-query policy used by the agent."""
+        return validate_read_query(sql)[0]
+
+    @staticmethod
+    def _tls_options() -> dict:
+        return {"ssl_ca": Config.MYSQL_SSL_CA,
+                "ssl_verify_cert": True, "ssl_verify_identity": True}
 
     def execute_query(self, sql: str, limit: int = 50) -> dict:
         """
@@ -80,21 +68,22 @@ class DatabaseConnector:
         Returns:
             dict with keys: success, columns, rows, row_count, error
         """
-        if not self._is_safe_query(sql):
+        try:
+            if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+                raise ValueError("The row limit must be a positive integer.")
+            row_limit = min(limit, Config.SQL_MAX_ROWS)
+            cleaned = prepare_read_query(sql, row_limit)
+        except ValueError as exc:
             return {
                 "success": False,
                 "columns": [],
                 "rows": [],
                 "row_count": 0,
-                "error": "Query blocked: Only SELECT queries are allowed for safety."
+                "error": f"Query blocked: {exc}"
             }
 
-        # Add LIMIT if not present
-        cleaned = sql.strip().rstrip(";")
-        if "LIMIT" not in cleaned.upper():
-            cleaned += f" LIMIT {limit}"
-
         connection = None
+        cursor = None
         try:
             connection = self.get_connection()
             cursor = connection.cursor(dictionary=True)
@@ -117,7 +106,9 @@ class DatabaseConnector:
                 "columns": columns,
                 "rows": rows,
                 "row_count": len(rows),
-                "error": None
+                "error": None,
+                "executed_sql": cleaned,
+                "row_limit": row_limit,
             }
         except Error as e:
             return {
@@ -128,6 +119,11 @@ class DatabaseConnector:
                 "error": str(e)
             }
         finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Error:
+                    pass
             if connection:
                 try:
                     connection.close()

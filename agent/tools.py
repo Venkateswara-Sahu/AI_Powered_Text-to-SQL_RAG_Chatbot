@@ -1,8 +1,15 @@
 """Agent tools — callable functions the LangGraph agent can invoke."""
+from __future__ import annotations
 
 import re
 from database.connector import DatabaseConnector
-from rag.embeddings import SchemaRAG
+from typing import TYPE_CHECKING
+from sqlglot import parse_one, exp
+from sqlglot.errors import SqlglotError
+from sqlglot.optimizer.scope import traverse_scope
+from database.sql_policy import validate_read_query
+if TYPE_CHECKING:
+    from rag.embeddings import SchemaRAG
 from llm.prompt_templates import SYSTEM_PROMPT, FEW_SHOT_EXAMPLES
 
 
@@ -97,9 +104,19 @@ class AgentTools:
         """Extract table names referenced in a SQL query (FROM and JOIN clauses)."""
         if not sql:
             return []
-        # Match table names after FROM, JOIN, and their variants
-        pattern = r'(?:FROM|JOIN)\s+`?(\w+)`?'
-        matches = re.findall(pattern, sql, re.IGNORECASE)
+        try:
+            query = parse_one(sql, read="mysql")
+        except SqlglotError:
+            return []
+        # TiDB resolves table/CTE identifiers case-insensitively. Normalize
+        # before scope resolution, not just when returning table names.
+        for identifier in query.find_all(exp.Identifier):
+            identifier.set("this", identifier.this.lower())
+        physical_tables = {id(source) for scope in traverse_scope(query)
+                           for source in scope.sources.values()
+                           if isinstance(source, exp.Table)}
+        matches = [table.name for table in query.find_all(exp.Table)
+                   if id(table) in physical_tables]
         # Deduplicate while preserving order
         seen = set()
         tables = []
@@ -113,18 +130,18 @@ class AgentTools:
     @staticmethod
     def compute_faithfulness(answer: str, execution_result: dict) -> dict:
         """
-        Check if the LLM answer is faithful to the SQL query results.
-        Compares key values from results against the answer text.
+        Heuristic substring coverage of selected result values in answer text.
+        This does not establish factual correctness or semantic faithfulness.
 
         Returns:
             dict with score (0-1), matched, total, details
         """
         if not answer or not execution_result.get("success"):
-            return {"score": 0, "matched": 0, "total": 0, "details": []}
+            return {"score": None, "matched": 0, "total": 0, "details": []}
 
         rows = execution_result.get("rows", [])
         if not rows:
-            return {"score": 1.0, "matched": 0, "total": 0, "details": []}
+            return {"score": None, "matched": 0, "total": 0, "details": []}
 
         answer_lower = answer.lower()
 
@@ -143,7 +160,7 @@ class AgentTools:
                 values_to_check.append({"column": key, "value": val_str})
 
         if not values_to_check:
-            return {"score": 1.0, "matched": 0, "total": 0, "details": []}
+            return {"score": None, "matched": 0, "total": 0, "details": []}
 
         # Check each value in the answer
         matched = 0
@@ -159,7 +176,7 @@ class AgentTools:
             })
 
         total = len(values_to_check)
-        score = round(matched / total, 4) if total > 0 else 1.0
+        score = round(matched / total, 4) if total > 0 else None
 
         return {
             "score": score,
@@ -170,19 +187,5 @@ class AgentTools:
 
     @staticmethod
     def validate_sql_safety(sql: str) -> tuple:
-        """Check SQL is read-only. Returns (is_safe, error)."""
-        blocked = [
-            "DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE",
-            "CREATE", "REPLACE", "RENAME", "GRANT", "REVOKE"
-        ]
-        upper = sql.upper()
-        for kw in blocked:
-            if re.search(rf"\b{kw}\b", upper):
-                return False, f"Blocked: SQL contains '{kw}'"
-
-        if not (upper.lstrip().startswith("SELECT") or
-                upper.lstrip().startswith("WITH") or
-                upper.lstrip().startswith("SHOW")):
-            return False, "Only SELECT/WITH/SHOW queries are allowed."
-
-        return True, ""
+        """Apply the same parsed-query policy used at database execution."""
+        return validate_read_query(sql)
