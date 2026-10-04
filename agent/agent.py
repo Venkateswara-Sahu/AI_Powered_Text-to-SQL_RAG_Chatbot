@@ -6,8 +6,7 @@ A stateful agent that uses tools to:
 2. Generate SQL with the LLM
 3. Execute SQL safely
 4. Self-reflect on results (retry if bad)
-5. Decompose complex questions into sub-queries
-6. Generate natural language answers
+5. Generate natural language answers and follow-up suggestions
 """
 
 from typing import TypedDict, Annotated, Any
@@ -297,11 +296,15 @@ class SQLAgent:
                 "action": "LLM generated SQL",
                 "result": sql[:100] + "..." if len(sql) > 100 else sql,
                 "safe": is_safe,
+                "sql": sql,
+                "attempt": state.get("sql_attempts", 0) + 1,
+                "raw_response": raw,
             }
 
             if not is_safe:
                 return {
                     "sql": "",
+                    "sql_attempts": state.get("sql_attempts", 0) + 1,
                     "error": safety_err,
                     "agent_steps": state.get("agent_steps", []) + [step],
                 }
@@ -315,6 +318,7 @@ class SQLAgent:
         except Exception as e:
             return {
                 "sql": "",
+                "sql_attempts": state.get("sql_attempts", 0) + 1,
                 "error": f"SQL generation failed: {str(e)}",
                 "agent_steps": state.get("agent_steps", []) + [{
                     "node": "generate_sql", "action": "Failed", "result": str(e)
@@ -329,7 +333,10 @@ class SQLAgent:
             return {
                 "execution_result": {"success": False, "error": state.get("error", "No SQL generated"), "rows": [], "columns": [], "row_count": 0},
                 "agent_steps": state.get("agent_steps", []) + [{
-                    "node": "execute_sql", "action": "Skipped", "result": "No SQL to execute"
+                    "node": "execute_sql", "action": "Skipped", "result": "No SQL to execute",
+                    "attempt": state.get("sql_attempts", 0), "sql": "",
+                    "execution_result": {"success": False, "error": state.get("error", "No SQL generated"),
+                                         "rows": [], "columns": [], "row_count": 0},
                 }],
             }
 
@@ -337,6 +344,9 @@ class SQLAgent:
 
         step = {
             "node": "execute_sql",
+            "attempt": state.get("sql_attempts", 0),
+            "sql": result.get("executed_sql", sql),
+            "execution_result": result,
             "action": f"Executed SQL",
             "result": f"{'✅' if result['success'] else '❌'} {result.get('row_count', 0)} rows" +
                       (f" | Error: {result.get('error', '')}" if not result['success'] else ""),
@@ -417,6 +427,9 @@ class SQLAgent:
 
             step = {
                 "node": "retry_sql",
+                "attempt": state.get("sql_attempts", 0) + 1,
+                "sql": sql,
+                "raw_response": response.content,
                 "action": f"Retry attempt #{state.get('sql_attempts', 0) + 1}",
                 "result": sql[:100] if is_safe else f"Unsafe: {safety_err}",
             }

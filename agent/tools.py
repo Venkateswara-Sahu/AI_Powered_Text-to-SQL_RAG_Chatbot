@@ -24,7 +24,26 @@ class AgentTools:
         """Retrieve relevant schema context for a question using FAISS RAG."""
         try:
             context = self.rag.retrieve(question)
-            return context if context else "No relevant schema found."
+            if not context:
+                return "No relevant schema found."
+            # Rich prose/sample rows support retrieval; SQL generation needs
+            # exact column names/types/keys rather than repeated index prose.
+            compact=[]
+            for document in context.split("\n---\n"):
+                table=[]
+                section=None
+                for line in document.splitlines():
+                    stripped=line.strip()
+                    if stripped.startswith('Table:'):
+                        table.append(stripped)
+                    elif stripped in ('Columns:','Foreign Keys:'):
+                        section=stripped
+                    elif stripped.startswith('Sample Data:'):
+                        section=None
+                    elif stripped.startswith('- ') and section:
+                        table.append(stripped)
+                compact.append('\n'.join(table))
+            return '\n---\n'.join(compact)
         except Exception as e:
             return f"Schema lookup failed: {str(e)}"
 
@@ -45,20 +64,10 @@ class AgentTools:
         row_count = results.get("row_count", 0)
         rows = results.get("rows", [])
 
-        # Check for empty results on questions that expect data
-        question_lower = question.lower()
-        if row_count == 0:
-            expecting_data = any(w in question_lower for w in [
-                "how many", "count", "total", "list", "show", "top", "all"
-            ])
-            if expecting_data:
-                issues.append(f"Query returned 0 rows but the question expects data. The SQL might be too restrictive.")
-
-        # Check for suspiciously large single values
-        if rows and len(rows) == 1:
-            for key, val in rows[0].items():
-                if isinstance(val, (int, float)) and val < 0:
-                    issues.append(f"Negative value found in '{key}': {val}. This might indicate a calculation error.")
+        # Empty sets and negative values can be correct (absent entities,
+        # geographical coordinates or signed differences). Without independent
+        # ground truth they are not grounds for changing a successfully executed
+        # query. Retry execution errors; evaluate semantic correctness separately.
 
         return {
             "is_valid": len(issues) == 0,

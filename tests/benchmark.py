@@ -12,6 +12,122 @@ import sys
 
 API_URL = "http://localhost:5000/api/chat"
 
+
+def compare_result_rows(actual, expected, ordered=False, rel_tol=0, abs_tol=1e-6):
+    """Compare projections by column position, preserving multiplicity and NULL.
+
+    Aliases are immaterial; projection width/order is part of the question contract.
+    Numeric serialization differences are tolerated, but two strings remain strings.
+    """
+    from decimal import Decimal, InvalidOperation
+    from numbers import Number
+    from math import isclose
+    if len(actual) != len(expected):
+        return False
+
+    def equal_value(a, b):
+        if a is None or b is None:
+            return a is b
+        if isinstance(a, bool) or isinstance(b, bool):
+            return type(a) is type(b) and a == b
+        if isinstance(a, Number) or isinstance(b, Number):
+            try:
+                left, right = Decimal(str(a)), Decimal(str(b))
+                if isinstance(a, int) or isinstance(b, int):
+                    return left == right
+                return isclose(float(left), float(right),
+                               rel_tol=rel_tol, abs_tol=abs_tol)
+            except (InvalidOperation, ValueError, TypeError):
+                return False
+        return a == b
+
+    def equal_row(a, b):
+        left, right = list(a.values()), list(b.values())
+        return len(left) == len(right) and all(equal_value(x, y) for x, y in zip(left, right))
+
+    if ordered:
+        return all(equal_row(a, b) for a, b in zip(actual, expected))
+    # Maximum bipartite matching avoids greedy tolerance/duplicate collisions.
+    matched = {}
+    def assign(index, visited):
+        for other, row in enumerate(expected):
+            if other not in visited and equal_row(actual[index], row):
+                visited.add(other)
+                if other not in matched or assign(matched[other], visited):
+                    matched[other] = index
+                    return True
+        return False
+    return all(assign(index, set()) for index in range(len(actual)))
+
+
+def compare_result_sets(actual, expected, ordered=False):
+    """Even an empty result must expose the requested projection width."""
+    from decimal import Decimal, InvalidOperation
+    if len(actual.get('columns',[])) != len(expected.get('columns',[])):
+        return False
+    numeric = set(expected.get('numeric_columns',[]))
+    integers = set(expected.get('integer_columns',[]))
+    def normalize(rows,columns):
+        output=[]
+        for row in rows:
+            if len(row)!=len(columns):
+                raise ValueError('Result projection cannot be represented without duplicate/missing columns.')
+            values=[]
+            for index,name in enumerate(columns):
+                value=row[name]
+                if value is not None and index in numeric:
+                    value=Decimal(str(value))
+                    if index in integers and value == value.to_integral_value():
+                        value=int(value)
+                values.append(value)
+            output.append(dict(enumerate(values)))
+        return output
+    try:
+        return compare_result_rows(normalize(actual.get('rows',[]),actual.get('columns',[])),
+                                   normalize(expected.get('rows',[]),expected.get('columns',[])),ordered=ordered)
+    except (InvalidOperation,ValueError,TypeError,KeyError):
+        return False
+
+
+def score_retrieval(ranked_tables, required_tables, k=7):
+    """Independent reference labels, never generated SQL, define relevance."""
+    required = set(required_tables)
+    if not required:
+        raise ValueError('Retrieval cases require nonempty independent table labels.')
+    ranked = list(dict.fromkeys(ranked_tables))[:k]
+    found = required.intersection(ranked)
+    return {
+        'reciprocal_rank': next((1 / rank for rank, name in enumerate(ranked, 1)
+                                 if name in required), 0.0),
+        'recall_at_k': len(found) / len(required),
+        'precision_at_k': len(found) / len(ranked) if ranked else 0.0,
+        'all_required_tables_found': found == required,
+    }
+
+
+def summarize_evaluation(records):
+    """All cases, including provider/execution failures, remain in denominators."""
+    import statistics
+    n = len(records)
+    final = sum(bool(r['final_correct']) for r in records)
+    first = sum(bool(r['first_attempt_correct']) for r in records)
+    retried = [r for r in records if r['retries'] > 0]
+    recovered = sum(not r['first_attempt_correct'] and r['final_correct'] for r in retried)
+    times = sorted(r['elapsed_s'] for r in records)
+    def quantile(p):
+        if not times:
+            return None
+        index = (len(times)-1)*p
+        low = int(index)
+        return times[low]+(times[min(low+1,len(times)-1)]-times[low])*(index-low)
+    return {'cases':n,'first_attempt_correct':first,'final_correct':final,
+            'first_attempt_execution_accuracy':first/n if n else None,
+            'final_execution_accuracy':final/n if n else None,
+            'retried_cases':len(retried),'retry_recovered_cases':recovered,
+            'retry_recovery_rate':recovered/len(retried) if retried else None,
+            'mean_latency_s':statistics.mean(times) if times else None,
+            'p50_latency_s':quantile(.5),'p95_latency_s':quantile(.95)}
+
 # ── Test Cases ────────────────────────────────────────────
 # Each test has: question, expected_type, validation keywords/checks
 TEST_QUERIES = [

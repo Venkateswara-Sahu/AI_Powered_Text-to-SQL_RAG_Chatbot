@@ -90,6 +90,12 @@ class DatabaseConnector:
             cursor.execute(cleaned)
             rows = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            integer_types = {1, 2, 3, 8, 9}
+            numeric_types = integer_types | {0, 4, 5, 246}
+            numeric_columns = [i for i, desc in enumerate(cursor.description or [])
+                               if len(desc)>1 and desc[1] in numeric_types]
+            integer_columns = [i for i, desc in enumerate(cursor.description or [])
+                               if len(desc)>1 and desc[1] in integer_types]
 
             # Convert non-serializable types to strings
             for row in rows:
@@ -109,6 +115,8 @@ class DatabaseConnector:
                 "error": None,
                 "executed_sql": cleaned,
                 "row_limit": row_limit,
+                "numeric_columns": numeric_columns,
+                "integer_columns": integer_columns,
             }
         except Error as e:
             return {
@@ -116,7 +124,9 @@ class DatabaseConnector:
                 "columns": [],
                 "rows": [],
                 "row_count": 0,
-                "error": str(e)
+                "error": str(e),
+                "executed_sql": cleaned,
+                "row_limit": row_limit,
             }
         finally:
             if cursor:
