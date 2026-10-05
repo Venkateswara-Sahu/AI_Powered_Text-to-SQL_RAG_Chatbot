@@ -1,1 +1,2 @@
-*.png filter=lfs diff=lfs merge=lfs -text
+# Raw evidence checksums must identify the published bytes on every platform.
+docs/evaluation/*.json -text
