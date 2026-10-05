@@ -1,5 +1,7 @@
 # Evaluation and execution audit — 4 October 2026
 
+> October 2026 re-evaluation: **39/40 (97.5%) first-attempt; 39/40 (97.5%) final** on 40 independent reference-result contracts; dense MRR@7 **0.678 → 0.888**. See [current results](evaluation/results.md). Historical measurements below are retained for context and are superseded as primary evidence.
+
 ## What the historical artifact supports
 
 The unchanged `tests/benchmark_results.json`, recorded on 25 March 2026,

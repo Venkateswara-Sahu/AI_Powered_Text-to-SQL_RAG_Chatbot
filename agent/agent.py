@@ -460,14 +460,22 @@ class SQLAgent:
         if not result.get("success"):
             answer = f"I generated the SQL but it failed to execute: {result.get('error', 'Unknown error')}"
         elif not result.get("rows"):
-            answer = "The query executed successfully but returned no results. Try broadening your question."
+            answer = "The query executed successfully and found no matching rows."
+        elif len(result["rows"]) > 20:
+            # Large lists previously supplied only twenty rows to an 800-token
+            # summary call. Render all connector-bounded rows directly so a
+            # complete list cannot lose its tail to input/output truncation.
+            columns = result.get("columns") or list(result["rows"][0])
+            answer = "\n".join(
+                "- " + "; ".join(
+                    f"{column}: {row.get(column) if row.get(column) is not None else 'NULL'}"
+                    for column in columns)
+                for row in result["rows"])
         else:
             # Format results for the prompt
             results_text = ""
-            for row in result["rows"][:20]:
+            for row in result["rows"]:
                 results_text += f"  {row}\n"
-            if result["row_count"] > 20:
-                results_text += f"  ... and {result['row_count'] - 20} more rows\n"
 
             user_msg = ANSWER_USER_TEMPLATE.format(
                 question=question,

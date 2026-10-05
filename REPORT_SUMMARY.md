@@ -1,5 +1,7 @@
 # F1InsightAI — Project Summary Report
 
+> October 2026 re-evaluation: **39/40 (97.5%) first-attempt; 39/40 (97.5%) final** on 40 independent reference-result contracts; dense MRR@7 **0.678 → 0.888**. See [current results](docs/evaluation/results.md). Historical measurements below are retained for context and are superseded as primary evidence.
+
 **Project Title:** F1InsightAI — AI-Powered Formula 1 Text-to-SQL RAG Chatbot  
 **Student:** Venkateswara Sahu (12204893)  
 **Course:** Term 8 — Capstone Project  
@@ -108,8 +110,8 @@ whether retries occurred. Its latency numerator also excluded exception times.
 The repaired benchmark reads agent_steps, preserves raw responses and
 suite/code hashes, measures all request durations and writes fresh artifacts
 without replacing historical results. Empty denominators are null.
-Offline regression tests verify the implementation; no fresh model benchmark
-is claimed. See [evaluation-audit.md](docs/evaluation-audit.md).
+Offline regression tests verify the implementation; the separate October
+reference-result evaluation is linked above. See [evaluation-audit.md](docs/evaluation-audit.md).
 
 ## 7. Retrieval and Answer Diagnostics
 
@@ -130,6 +132,6 @@ side-effect constructs, applies an outer result cap and returns the executed
 query. TLS-enabled connections verify certificate and hostname.
 
 Database permissions, server-side resource limits, authenticated conversation
-access and a fresh live evaluation remain deployment/evidence requirements.
+access remain deployment requirements; the completed local-model evaluation is linked above.
 This is an academic prototype with tested software contracts and explicitly
 bounded historical evidence.

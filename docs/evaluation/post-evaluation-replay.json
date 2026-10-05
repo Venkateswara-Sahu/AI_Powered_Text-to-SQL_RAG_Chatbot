@@ -1,0 +1,1393 @@
+{
+  "method": "Replay previously generated SQL against the unchanged snapshot after deterministic name-matching repair; NO NEW MODEL QUERIES",
+  "original_evaluation_sha256": "935ee3b1b59df5b3a00f46f334cd77a3f8bae60e933db247bdc3794495f039a3",
+  "original_frozen_implementation": "d71e49c45acf9b5164aea1cc47610b9dc46d6959",
+  "replayed_queries": 40,
+  "reference_matches": 40,
+  "original_model_run_correct": 39,
+  "original_model_run_cases": 40,
+  "local_collation_probe": {
+    "success": true,
+    "columns": [
+      "accent_match",
+      "binary_match"
+    ],
+    "rows": [
+      {
+        "accent_match": 1,
+        "binary_match": 0
+      }
+    ],
+    "row_count": 1,
+    "error": null,
+    "executed_sql": "SELECT 'Pérez' COLLATE utf8mb4_unicode_ci = 'Perez' AS accent_match, 'Pérez' COLLATE utf8mb4_bin = 'Perez' AS binary_match LIMIT 50",
+    "row_limit": 50,
+    "numeric_columns": [
+      0,
+      1
+    ],
+    "integer_columns": [
+      0,
+      1
+    ]
+  },
+  "tidb_constant_collation_probe": {
+    "success": true,
+    "columns": [
+      "accent_match",
+      "binary_match"
+    ],
+    "rows": [
+      {
+        "accent_match": 1,
+        "binary_match": 0
+      }
+    ],
+    "row_count": 1,
+    "error": null,
+    "executed_sql": "SELECT 'Pérez' COLLATE utf8mb4_unicode_ci = 'Perez' AS accent_match, 'Pérez' COLLATE utf8mb4_bin = 'Perez' AS binary_match LIMIT 50",
+    "row_limit": 50,
+    "numeric_columns": [
+      0,
+      1
+    ],
+    "integer_columns": [
+      0,
+      1
+    ]
+  },
+  "records": [
+    {
+      "id": "E01",
+      "saved_generated_sql": "SELECT COUNT(*) FROM races WHERE year = 2019 LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(*)"
+        ],
+        "rows": [
+          {
+            "COUNT(*)": 21
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(*) FROM races WHERE year = 2019 LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E02",
+      "saved_generated_sql": "SELECT name FROM circuits WHERE country = 'France' ORDER BY name ASC LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name"
+        ],
+        "rows": [
+          {
+            "name": "Charade Circuit"
+          },
+          {
+            "name": "Circuit Paul Ricard"
+          },
+          {
+            "name": "Circuit de Nevers Magny-Cours"
+          },
+          {
+            "name": "Dijon-Prenois"
+          },
+          {
+            "name": "Le Mans"
+          },
+          {
+            "name": "Reims-Gueux"
+          },
+          {
+            "name": "Rouen-Les-Essarts"
+          }
+        ],
+        "row_count": 7,
+        "error": null,
+        "executed_sql": "SELECT name FROM circuits WHERE country = 'France' ORDER BY name ASC LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E03",
+      "saved_generated_sql": "SELECT COUNT(*) FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId WHERE r.position = '1' AND d.forename = 'Sebastian' AND d.surname = 'Vettel' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(*)"
+        ],
+        "rows": [
+          {
+            "COUNT(*)": 53
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(*) FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId WHERE r.position = '1' AND d.forename COLLATE utf8mb4_unicode_ci = 'Sebastian' AND d.surname COLLATE utf8mb4_unicode_ci = 'Vettel' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E04",
+      "saved_generated_sql": "SELECT c.name, COUNT(*) AS wins FROM results AS r JOIN constructors AS c ON r.constructorId = c.constructorId WHERE r.position = '1' GROUP BY c.constructorId, c.name ORDER BY wins DESC, c.name ASC LIMIT 3",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name",
+          "wins"
+        ],
+        "rows": [
+          {
+            "name": "Ferrari",
+            "wins": 249
+          },
+          {
+            "name": "McLaren",
+            "wins": 185
+          },
+          {
+            "name": "Mercedes",
+            "wins": 129
+          }
+        ],
+        "row_count": 3,
+        "error": null,
+        "executed_sql": "SELECT c.name, COUNT(*) AS wins FROM results AS r JOIN constructors AS c ON r.constructorId = c.constructorId WHERE r.position = '1' GROUP BY c.constructorId, c.name ORDER BY wins DESC, c.name ASC LIMIT 3",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": [
+          1
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E05",
+      "saved_generated_sql": "SELECT r.name, r.round FROM races AS r WHERE r.year = 2018 ORDER BY r.round LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name",
+          "round"
+        ],
+        "rows": [
+          {
+            "name": "Australian Grand Prix",
+            "round": 1
+          },
+          {
+            "name": "Bahrain Grand Prix",
+            "round": 2
+          },
+          {
+            "name": "Chinese Grand Prix",
+            "round": 3
+          },
+          {
+            "name": "Azerbaijan Grand Prix",
+            "round": 4
+          },
+          {
+            "name": "Spanish Grand Prix",
+            "round": 5
+          },
+          {
+            "name": "Monaco Grand Prix",
+            "round": 6
+          },
+          {
+            "name": "Canadian Grand Prix",
+            "round": 7
+          },
+          {
+            "name": "French Grand Prix",
+            "round": 8
+          },
+          {
+            "name": "Austrian Grand Prix",
+            "round": 9
+          },
+          {
+            "name": "British Grand Prix",
+            "round": 10
+          },
+          {
+            "name": "German Grand Prix",
+            "round": 11
+          },
+          {
+            "name": "Hungarian Grand Prix",
+            "round": 12
+          },
+          {
+            "name": "Belgian Grand Prix",
+            "round": 13
+          },
+          {
+            "name": "Italian Grand Prix",
+            "round": 14
+          },
+          {
+            "name": "Singapore Grand Prix",
+            "round": 15
+          },
+          {
+            "name": "Russian Grand Prix",
+            "round": 16
+          },
+          {
+            "name": "Japanese Grand Prix",
+            "round": 17
+          },
+          {
+            "name": "United States Grand Prix",
+            "round": 18
+          },
+          {
+            "name": "Mexican Grand Prix",
+            "round": 19
+          },
+          {
+            "name": "Brazilian Grand Prix",
+            "round": 20
+          },
+          {
+            "name": "Abu Dhabi Grand Prix",
+            "round": 21
+          }
+        ],
+        "row_count": 21,
+        "error": null,
+        "executed_sql": "SELECT r.name, r.round FROM races AS r WHERE r.year = 2018 ORDER BY r.round LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": [
+          1
+        ]
+      },
+      "reference_match": true,
+      "complete_direct_answer": "- name: Australian Grand Prix; round: 1\n- name: Bahrain Grand Prix; round: 2\n- name: Chinese Grand Prix; round: 3\n- name: Azerbaijan Grand Prix; round: 4\n- name: Spanish Grand Prix; round: 5\n- name: Monaco Grand Prix; round: 6\n- name: Canadian Grand Prix; round: 7\n- name: French Grand Prix; round: 8\n- name: Austrian Grand Prix; round: 9\n- name: British Grand Prix; round: 10\n- name: German Grand Prix; round: 11\n- name: Hungarian Grand Prix; round: 12\n- name: Belgian Grand Prix; round: 13\n- name: Italian Grand Prix; round: 14\n- name: Singapore Grand Prix; round: 15\n- name: Russian Grand Prix; round: 16\n- name: Japanese Grand Prix; round: 17\n- name: United States Grand Prix; round: 18\n- name: Mexican Grand Prix; round: 19\n- name: Brazilian Grand Prix; round: 20\n- name: Abu Dhabi Grand Prix; round: 21"
+    },
+    {
+      "id": "E06",
+      "saved_generated_sql": "SELECT d.surname, r.position FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN drivers AS d ON r.driverId = d.driverId WHERE ra.year = 2020 AND ra.name LIKE '%Italian Grand Prix%' AND r.position = '1' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "surname",
+          "position"
+        ],
+        "rows": [
+          {
+            "surname": "Gasly",
+            "position": "1"
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT d.surname, r.position FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN drivers AS d ON r.driverId = d.driverId WHERE ra.year = 2020 AND ra.name LIKE '%Italian Grand Prix%' AND r.position = '1' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E07",
+      "saved_generated_sql": "SELECT MIN(p.milliseconds) AS min_duration_ms FROM pit_stops AS p JOIN races AS r ON p.raceId = r.raceId WHERE r.year = 2023 AND r.name LIKE '%Bahrain%' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "min_duration_ms"
+        ],
+        "rows": [
+          {
+            "min_duration_ms": 24227
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT MIN(p.milliseconds) AS min_duration_ms FROM pit_stops AS p JOIN races AS r ON p.raceId = r.raceId WHERE r.year = 2023 AND r.name LIKE '%Bahrain%' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E08",
+      "saved_generated_sql": "SELECT COUNT(*) FROM lap_times AS lt JOIN races AS r ON lt.raceId = r.raceId WHERE r.year = 2022 AND r.name LIKE '%Japanese Grand Prix%' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(*)"
+        ],
+        "rows": [
+          {
+            "COUNT(*)": 504
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(*) FROM lap_times AS lt JOIN races AS r ON lt.raceId = r.raceId WHERE r.year = 2022 AND r.name LIKE '%Japanese Grand Prix%' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E09",
+      "saved_generated_sql": "SELECT d.surname, s.position FROM sprint_results AS s JOIN races AS r ON s.raceId = r.raceId JOIN drivers AS d ON s.driverId = d.driverId WHERE r.year = 2023 AND r.name LIKE '%Austrian Grand Prix%' AND s.position IN ('1', '2', '3') ORDER BY s.positionOrder LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "surname",
+          "position"
+        ],
+        "rows": [
+          {
+            "surname": "Verstappen",
+            "position": "1"
+          },
+          {
+            "surname": "Pérez",
+            "position": "2"
+          },
+          {
+            "surname": "Sainz",
+            "position": "3"
+          }
+        ],
+        "row_count": 3,
+        "error": null,
+        "executed_sql": "SELECT d.surname, s.position FROM sprint_results AS s JOIN races AS r ON s.raceId = r.raceId JOIN drivers AS d ON s.driverId = d.driverId WHERE r.year = 2023 AND r.name LIKE '%Austrian Grand Prix%' AND s.position IN ('1', '2', '3') ORDER BY s.positionOrder LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E10",
+      "saved_generated_sql": "SELECT d.surname, q.position FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId JOIN drivers AS d ON q.driverId = d.driverId WHERE r.year = 2022 AND r.name LIKE '%Singapore%' AND q.position = 1 LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "surname",
+          "position"
+        ],
+        "rows": [
+          {
+            "surname": "Leclerc",
+            "position": 1
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT d.surname, q.position FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId JOIN drivers AS d ON q.driverId = d.driverId WHERE r.year = 2022 AND r.name LIKE '%Singapore%' AND q.position = 1 LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": [
+          1
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E11",
+      "saved_generated_sql": "SELECT d.surname, s.points FROM driver_standings AS s JOIN races AS r ON s.raceId = r.raceId JOIN drivers AS d ON s.driverId = d.driverId WHERE r.year = 2016 AND r.round = (SELECT MAX(round) FROM races WHERE year = 2016) AND s.position = 1 LIMIT 1",
+      "execution": {
+        "success": true,
+        "columns": [
+          "surname",
+          "points"
+        ],
+        "rows": [
+          {
+            "surname": "Rosberg",
+            "points": 385.0
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT d.surname, s.points FROM driver_standings AS s JOIN races AS r ON s.raceId = r.raceId JOIN drivers AS d ON s.driverId = d.driverId WHERE r.year = 2016 AND r.round = (SELECT MAX(round) FROM races WHERE year = 2016) AND s.position = 1 LIMIT 1",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E12",
+      "saved_generated_sql": "SELECT c.name, s.points FROM constructor_standings AS s JOIN races AS r ON s.raceId = r.raceId JOIN constructors AS c ON s.constructorId = c.constructorId WHERE r.year = 2017 AND s.position = 1 ORDER BY r.round DESC LIMIT 1",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name",
+          "points"
+        ],
+        "rows": [
+          {
+            "name": "Mercedes",
+            "points": 668.0
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT c.name, s.points FROM constructor_standings AS s JOIN races AS r ON s.raceId = r.raceId JOIN constructors AS c ON s.constructorId = c.constructorId WHERE r.year = 2017 AND s.position = 1 ORDER BY r.round DESC LIMIT 1",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E13",
+      "saved_generated_sql": "SELECT name FROM constructors WHERE nationality = 'Italian' ORDER BY name ASC LIMIT 5",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name"
+        ],
+        "rows": [
+          {
+            "name": "ATS"
+          },
+          {
+            "name": "AlphaTauri"
+          },
+          {
+            "name": "Andrea Moda"
+          },
+          {
+            "name": "Arzani-Volpini"
+          },
+          {
+            "name": "Behra-Porsche"
+          }
+        ],
+        "row_count": 5,
+        "error": null,
+        "executed_sql": "SELECT name FROM constructors WHERE nationality = 'Italian' ORDER BY name ASC LIMIT 5",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E14",
+      "saved_generated_sql": "SELECT d.surname, d.dob FROM drivers AS d WHERE d.nationality = 'Japanese' ORDER BY d.surname ASC, d.forename ASC LIMIT 5",
+      "execution": {
+        "success": true,
+        "columns": [
+          "surname",
+          "dob"
+        ],
+        "rows": [
+          {
+            "surname": "Fushida",
+            "dob": "1946-03-10"
+          },
+          {
+            "surname": "Hasemi",
+            "dob": "1945-11-13"
+          },
+          {
+            "surname": "Hattori",
+            "dob": "1966-06-13"
+          },
+          {
+            "surname": "Hoshino",
+            "dob": "1947-07-01"
+          },
+          {
+            "surname": "Ide",
+            "dob": "1975-01-21"
+          }
+        ],
+        "row_count": 5,
+        "error": null,
+        "executed_sql": "SELECT d.surname, d.dob FROM drivers AS d WHERE d.nationality = 'Japanese' ORDER BY d.surname ASC, d.forename ASC LIMIT 5",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E15",
+      "saved_generated_sql": "SELECT name, location FROM circuits WHERE country = 'Japan' ORDER BY name ASC LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name",
+          "location"
+        ],
+        "rows": [
+          {
+            "name": "Fuji Speedway",
+            "location": "Oyama"
+          },
+          {
+            "name": "Okayama International Circuit",
+            "location": "Okayama"
+          },
+          {
+            "name": "Suzuka Circuit",
+            "location": "Suzuka"
+          }
+        ],
+        "row_count": 3,
+        "error": null,
+        "executed_sql": "SELECT name, location FROM circuits WHERE country = 'Japan' ORDER BY name ASC LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E16",
+      "saved_generated_sql": "SELECT COUNT(*) FROM circuits WHERE country = 'Atlantis' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(*)"
+        ],
+        "rows": [
+          {
+            "COUNT(*)": 0
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(*) FROM circuits WHERE country = 'Atlantis' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E17",
+      "saved_generated_sql": "SELECT name FROM races WHERE year = 1800 ORDER BY name ASC LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name"
+        ],
+        "rows": [],
+        "row_count": 0,
+        "error": null,
+        "executed_sql": "SELECT name FROM races WHERE year = 1800 ORDER BY name ASC LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E18",
+      "saved_generated_sql": "SELECT MIN(year) AS earliest, MAX(year) AS latest FROM seasons LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "earliest",
+          "latest"
+        ],
+        "rows": [
+          {
+            "earliest": 1950,
+            "latest": 2024
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT MIN(year) AS earliest, MAX(year) AS latest FROM seasons LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0,
+          1
+        ],
+        "integer_columns": [
+          0,
+          1
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E19",
+      "saved_generated_sql": "SELECT MIN(year) AS min_year, MAX(year) AS max_year FROM races LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "min_year",
+          "max_year"
+        ],
+        "rows": [
+          {
+            "min_year": 1950,
+            "max_year": 2024
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT MIN(year) AS min_year, MAX(year) AS max_year FROM races LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0,
+          1
+        ],
+        "integer_columns": [
+          0,
+          1
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E20",
+      "saved_generated_sql": "SELECT COUNT(DISTINCT r.driverId) AS distinct_winners FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId WHERE ra.year = 2009 AND r.position = '1' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "distinct_winners"
+        ],
+        "rows": [
+          {
+            "distinct_winners": 6
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(DISTINCT r.driverId) AS distinct_winners FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId WHERE ra.year = 2009 AND r.position = '1' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E21",
+      "saved_generated_sql": "SELECT c.name, SUM(r.points) AS total_points FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN constructors AS c ON r.constructorId = c.constructorId WHERE ra.year = 2014 GROUP BY c.constructorId, c.name ORDER BY total_points DESC, c.name ASC LIMIT 3",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name",
+          "total_points"
+        ],
+        "rows": [
+          {
+            "name": "Mercedes",
+            "total_points": 701.0
+          },
+          {
+            "name": "Red Bull",
+            "total_points": 405.0
+          },
+          {
+            "name": "Williams",
+            "total_points": 320.0
+          }
+        ],
+        "row_count": 3,
+        "error": null,
+        "executed_sql": "SELECT c.name, SUM(r.points) AS total_points FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN constructors AS c ON r.constructorId = c.constructorId WHERE ra.year = 2014 GROUP BY c.constructorId, c.name ORDER BY total_points DESC, c.name ASC LIMIT 3",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E22",
+      "saved_generated_sql": "SELECT d.surname, COUNT(*) AS podium_count FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId JOIN races AS ra ON r.raceId = ra.raceId WHERE ra.year = 2010 AND r.position IN ('1', '2', '3') GROUP BY d.driverId, d.surname ORDER BY podium_count DESC, d.surname ASC LIMIT 3",
+      "execution": {
+        "success": true,
+        "columns": [
+          "surname",
+          "podium_count"
+        ],
+        "rows": [
+          {
+            "surname": "Alonso",
+            "podium_count": 10
+          },
+          {
+            "surname": "Vettel",
+            "podium_count": 10
+          },
+          {
+            "surname": "Webber",
+            "podium_count": 10
+          }
+        ],
+        "row_count": 3,
+        "error": null,
+        "executed_sql": "SELECT d.surname, COUNT(*) AS podium_count FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId JOIN races AS ra ON r.raceId = ra.raceId WHERE ra.year = 2010 AND r.position IN ('1', '2', '3') GROUP BY d.driverId, d.surname ORDER BY podium_count DESC, d.surname ASC LIMIT 3",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": [
+          1
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E23",
+      "saved_generated_sql": "SELECT COUNT(*) FROM results AS r JOIN status AS s ON r.statusId = s.statusId JOIN races AS ra ON r.raceId = ra.raceId WHERE s.status = 'Collision' AND ra.year = 2015 LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(*)"
+        ],
+        "rows": [
+          {
+            "COUNT(*)": 11
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(*) FROM results AS r JOIN status AS s ON r.statusId = s.statusId JOIN races AS ra ON r.raceId = ra.raceId WHERE s.status = 'Collision' AND ra.year = 2015 LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E24",
+      "saved_generated_sql": "SELECT s.status, COUNT(*) AS occurrence_count FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN status AS s ON r.statusId = s.statusId WHERE ra.year = 2018 GROUP BY s.status ORDER BY occurrence_count DESC, s.status ASC LIMIT 3",
+      "execution": {
+        "success": true,
+        "columns": [
+          "status",
+          "occurrence_count"
+        ],
+        "rows": [
+          {
+            "status": "Finished",
+            "occurrence_count": 191
+          },
+          {
+            "status": "+1 Lap",
+            "occurrence_count": 109
+          },
+          {
+            "status": "+2 Laps",
+            "occurrence_count": 33
+          }
+        ],
+        "row_count": 3,
+        "error": null,
+        "executed_sql": "SELECT s.status, COUNT(*) AS occurrence_count FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN status AS s ON r.statusId = s.statusId WHERE ra.year = 2018 GROUP BY s.status ORDER BY occurrence_count DESC, s.status ASC LIMIT 3",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": [
+          1
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E25",
+      "saved_generated_sql": "SELECT COUNT(*) FROM pit_stops AS p JOIN races AS r ON p.raceId = r.raceId WHERE r.year = 2021 AND r.name = 'Hungarian Grand Prix' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(*)"
+        ],
+        "rows": [
+          {
+            "COUNT(*)": 52
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(*) FROM pit_stops AS p JOIN races AS r ON p.raceId = r.raceId WHERE r.year = 2021 AND r.name = 'Hungarian Grand Prix' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E26",
+      "saved_generated_sql": "SELECT AVG(l.milliseconds) AS average_lap_time_ms FROM lap_times AS l JOIN races AS r ON l.raceId = r.raceId WHERE r.year = 2019 AND r.name = 'Spanish Grand Prix' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "average_lap_time_ms"
+        ],
+        "rows": [
+          {
+            "average_lap_time_ms": "87557.5392"
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT AVG(l.milliseconds) AS average_lap_time_ms FROM lap_times AS l JOIN races AS r ON l.raceId = r.raceId WHERE r.year = 2019 AND r.name = 'Spanish Grand Prix' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E27",
+      "saved_generated_sql": "SELECT COUNT(DISTINCT sr.raceId) AS race_count FROM sprint_results AS sr JOIN races AS r ON sr.raceId = r.raceId WHERE r.year = 2021 LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "race_count"
+        ],
+        "rows": [
+          {
+            "race_count": 3
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(DISTINCT sr.raceId) AS race_count FROM sprint_results AS sr JOIN races AS r ON sr.raceId = r.raceId WHERE r.year = 2021 LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E28",
+      "saved_generated_sql": "SELECT d.surname, q.q3 FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId JOIN drivers AS d ON q.driverId = d.driverId WHERE r.year = 2019 AND r.name LIKE '%Canadian Grand Prix%' AND q.position = 1 LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "surname",
+          "q3"
+        ],
+        "rows": [
+          {
+            "surname": "Vettel",
+            "q3": "1:10.240"
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT d.surname, q.q3 FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId JOIN drivers AS d ON q.driverId = d.driverId WHERE r.year = 2019 AND r.name LIKE '%Canadian Grand Prix%' AND q.position = 1 LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E29",
+      "saved_generated_sql": "SELECT c.name, cr.points FROM constructor_results AS cr JOIN races AS r ON cr.raceId = r.raceId JOIN constructors AS c ON cr.constructorId = c.constructorId WHERE r.year = 2020 AND r.name LIKE '%Portuguese Grand Prix%' ORDER BY cr.points DESC, c.name ASC LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name",
+          "points"
+        ],
+        "rows": [
+          {
+            "name": "Mercedes",
+            "points": 44.0
+          },
+          {
+            "name": "Red Bull",
+            "points": 15.0
+          },
+          {
+            "name": "Ferrari",
+            "points": 13.0
+          },
+          {
+            "name": "AlphaTauri",
+            "points": 10.0
+          },
+          {
+            "name": "McLaren",
+            "points": 8.0
+          },
+          {
+            "name": "Racing Point",
+            "points": 6.0
+          },
+          {
+            "name": "Renault",
+            "points": 6.0
+          },
+          {
+            "name": "Alfa Romeo",
+            "points": 0.0
+          },
+          {
+            "name": "Haas F1 Team",
+            "points": 0.0
+          },
+          {
+            "name": "Williams",
+            "points": 0.0
+          }
+        ],
+        "row_count": 10,
+        "error": null,
+        "executed_sql": "SELECT c.name, cr.points FROM constructor_results AS cr JOIN races AS r ON cr.raceId = r.raceId JOIN constructors AS c ON cr.constructorId = c.constructorId WHERE r.year = 2020 AND r.name LIKE '%Portuguese Grand Prix%' ORDER BY cr.points DESC, c.name ASC LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E30",
+      "saved_generated_sql": "SELECT c.name, c.country FROM races AS r JOIN circuits AS c ON r.circuitId = c.circuitId WHERE r.year = 2021 AND r.name LIKE '%Turkish Grand Prix%' LIMIT 1",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name",
+          "country"
+        ],
+        "rows": [
+          {
+            "name": "Istanbul Park",
+            "country": "Turkey"
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT c.name, c.country FROM races AS r JOIN circuits AS c ON r.circuitId = c.circuitId WHERE r.year = 2021 AND r.name LIKE '%Turkish Grand Prix%' LIMIT 1",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E31",
+      "saved_generated_sql": "SELECT MAX(lat) AS max_latitude FROM circuits WHERE country = 'Australia' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "max_latitude"
+        ],
+        "rows": [
+          {
+            "max_latitude": -34.9272
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT MAX(lat) AS max_latitude FROM circuits WHERE country = 'Australia' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E32",
+      "saved_generated_sql": "SELECT SUM(r.laps) AS total_laps FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId JOIN races AS ra ON r.raceId = ra.raceId WHERE ra.year = 2023 AND d.forename = 'Fernando' AND d.surname = 'Alonso' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "total_laps"
+        ],
+        "rows": [
+          {
+            "total_laps": "1294"
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT SUM(r.laps) AS total_laps FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId JOIN races AS ra ON r.raceId = ra.raceId WHERE ra.year = 2023 AND d.forename COLLATE utf8mb4_unicode_ci = 'Fernando' AND d.surname COLLATE utf8mb4_unicode_ci = 'Alonso' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E33",
+      "saved_generated_sql": "SELECT SUM(r.points) AS total_points FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN drivers AS d ON r.driverId = d.driverId WHERE ra.year = 2021 AND d.forename = 'Sergio' AND d.surname = 'Perez' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "total_points"
+        ],
+        "rows": [
+          {
+            "total_points": 190.0
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT SUM(r.points) AS total_points FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN drivers AS d ON r.driverId = d.driverId WHERE ra.year = 2021 AND d.forename COLLATE utf8mb4_unicode_ci = 'Sergio' AND d.surname COLLATE utf8mb4_unicode_ci = 'Perez' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E34",
+      "saved_generated_sql": "SELECT COUNT(*) FROM races AS r JOIN circuits AS c ON r.circuitId = c.circuitId WHERE r.year = 2020 AND c.name LIKE '%Silverstone%' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(*)"
+        ],
+        "rows": [
+          {
+            "COUNT(*)": 2
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(*) FROM races AS r JOIN circuits AS c ON r.circuitId = c.circuitId WHERE r.year = 2020 AND c.name LIKE '%Silverstone%' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E35",
+      "saved_generated_sql": "SELECT name, date FROM races ORDER BY date ASC, raceId ASC LIMIT 1",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name",
+          "date"
+        ],
+        "rows": [
+          {
+            "name": "British Grand Prix",
+            "date": "1950-05-13"
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT name, date FROM races ORDER BY date ASC, raceId ASC LIMIT 1",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E36",
+      "saved_generated_sql": "SELECT COUNT(DISTINCT r.constructorId) FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId WHERE ra.year = 2023 LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(DISTINCT r.constructorId)"
+        ],
+        "rows": [
+          {
+            "COUNT(DISTINCT r.constructorId)": 10
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(DISTINCT r.constructorId) FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId WHERE ra.year = 2023 LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E37",
+      "saved_generated_sql": "SELECT COUNT(*) FROM drivers WHERE nationality = 'British' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(*)"
+        ],
+        "rows": [
+          {
+            "COUNT(*)": 166
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(*) FROM drivers WHERE nationality = 'British' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E38",
+      "saved_generated_sql": "SELECT COUNT(*) FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId WHERE r.year = 2023 AND r.name LIKE '%Belgian%' AND NOT q.q3 IS NULL AND q.q3 <> '' LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "COUNT(*)"
+        ],
+        "rows": [
+          {
+            "COUNT(*)": 10
+          }
+        ],
+        "row_count": 1,
+        "error": null,
+        "executed_sql": "SELECT COUNT(*) FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId WHERE r.year = 2023 AND r.name LIKE '%Belgian%' AND NOT q.q3 IS NULL AND q.q3 <> '' LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "reference_match": true
+    },
+    {
+      "id": "E39",
+      "saved_generated_sql": "SELECT DISTINCT c.name, c.country FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.year = 2023 ORDER BY c.name LIMIT 50",
+      "execution": {
+        "success": true,
+        "columns": [
+          "name",
+          "country"
+        ],
+        "rows": [
+          {
+            "name": "Albert Park Grand Prix Circuit",
+            "country": "Australia"
+          },
+          {
+            "name": "Autodromo Nazionale di Monza",
+            "country": "Italy"
+          },
+          {
+            "name": "Autódromo Hermanos Rodríguez",
+            "country": "Mexico"
+          },
+          {
+            "name": "Autódromo José Carlos Pace",
+            "country": "Brazil"
+          },
+          {
+            "name": "Bahrain International Circuit",
+            "country": "Bahrain"
+          },
+          {
+            "name": "Baku City Circuit",
+            "country": "Azerbaijan"
+          },
+          {
+            "name": "Circuit Gilles Villeneuve",
+            "country": "Canada"
+          },
+          {
+            "name": "Circuit Park Zandvoort",
+            "country": "Netherlands"
+          },
+          {
+            "name": "Circuit de Barcelona-Catalunya",
+            "country": "Spain"
+          },
+          {
+            "name": "Circuit de Monaco",
+            "country": "Monaco"
+          },
+          {
+            "name": "Circuit de Spa-Francorchamps",
+            "country": "Belgium"
+          },
+          {
+            "name": "Circuit of the Americas",
+            "country": "USA"
+          },
+          {
+            "name": "Hungaroring",
+            "country": "Hungary"
+          },
+          {
+            "name": "Jeddah Corniche Circuit",
+            "country": "Saudi Arabia"
+          },
+          {
+            "name": "Las Vegas Strip Street Circuit",
+            "country": "United States"
+          },
+          {
+            "name": "Losail International Circuit",
+            "country": "Qatar"
+          },
+          {
+            "name": "Marina Bay Street Circuit",
+            "country": "Singapore"
+          },
+          {
+            "name": "Miami International Autodrome",
+            "country": "USA"
+          },
+          {
+            "name": "Red Bull Ring",
+            "country": "Austria"
+          },
+          {
+            "name": "Silverstone Circuit",
+            "country": "UK"
+          },
+          {
+            "name": "Suzuka Circuit",
+            "country": "Japan"
+          },
+          {
+            "name": "Yas Marina Circuit",
+            "country": "UAE"
+          }
+        ],
+        "row_count": 22,
+        "error": null,
+        "executed_sql": "SELECT DISTINCT c.name, c.country FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.year = 2023 ORDER BY c.name LIMIT 50",
+        "row_limit": 50,
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "reference_match": true,
+      "complete_direct_answer": "- name: Albert Park Grand Prix Circuit; country: Australia\n- name: Autodromo Nazionale di Monza; country: Italy\n- name: Autódromo Hermanos Rodríguez; country: Mexico\n- name: Autódromo José Carlos Pace; country: Brazil\n- name: Bahrain International Circuit; country: Bahrain\n- name: Baku City Circuit; country: Azerbaijan\n- name: Circuit Gilles Villeneuve; country: Canada\n- name: Circuit Park Zandvoort; country: Netherlands\n- name: Circuit de Barcelona-Catalunya; country: Spain\n- name: Circuit de Monaco; country: Monaco\n- name: Circuit de Spa-Francorchamps; country: Belgium\n- name: Circuit of the Americas; country: USA\n- name: Hungaroring; country: Hungary\n- name: Jeddah Corniche Circuit; country: Saudi Arabia\n- name: Las Vegas Strip Street Circuit; country: United States\n- name: Losail International Circuit; country: Qatar\n- name: Marina Bay Street Circuit; country: Singapore\n- name: Miami International Autodrome; country: USA\n- name: Red Bull Ring; country: Austria\n- name: Silverstone Circuit; country: UK\n- name: Suzuka Circuit; country: Japan\n- name: Yas Marina Circuit; country: UAE"
+    },
+    {
+      "id": "E40",
+      "saved_generated_sql": "SELECT d.surname, s.position FROM driver_standings AS s JOIN races AS r ON s.raceId = r.raceId JOIN drivers AS d ON s.driverId = d.driverId WHERE r.year = 2013 AND r.round = (SELECT MAX(round) FROM races WHERE year = 2013) ORDER BY s.position LIMIT 5",
+      "execution": {
+        "success": true,
+        "columns": [
+          "surname",
+          "position"
+        ],
+        "rows": [
+          {
+            "surname": "Vettel",
+            "position": 1
+          },
+          {
+            "surname": "Alonso",
+            "position": 2
+          },
+          {
+            "surname": "Webber",
+            "position": 3
+          },
+          {
+            "surname": "Hamilton",
+            "position": 4
+          },
+          {
+            "surname": "Räikkönen",
+            "position": 5
+          }
+        ],
+        "row_count": 5,
+        "error": null,
+        "executed_sql": "SELECT d.surname, s.position FROM driver_standings AS s JOIN races AS r ON s.raceId = r.raceId JOIN drivers AS d ON s.driverId = d.driverId WHERE r.year = 2013 AND r.round = (SELECT MAX(round) FROM races WHERE year = 2013) ORDER BY s.position LIMIT 5",
+        "row_limit": 50,
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": [
+          1
+        ]
+      },
+      "reference_match": true
+    }
+  ]
+}

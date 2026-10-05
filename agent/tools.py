@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from sqlglot import parse_one, exp
 from sqlglot.errors import SqlglotError
 from sqlglot.optimizer.scope import traverse_scope
-from database.sql_policy import validate_read_query
+from database.sql_policy import validate_read_query, parse_read_query
 if TYPE_CHECKING:
     from rag.embeddings import SchemaRAG
 from llm.prompt_templates import SYSTEM_PROMPT, FEW_SHOT_EXAMPLES
@@ -48,8 +48,43 @@ class AgentTools:
             return f"Schema lookup failed: {str(e)}"
 
     def execute_sql(self, sql: str) -> dict:
-        """Execute a read-only SQL query safely."""
-        return self.db.execute_query(sql)
+        """Execute SELECT SQL with human-name equality normalization.
+
+        Only literal equalities on physical drivers.forename/surname change.
+        Stable identifiers, patterns, other tables and CTE shadows retain their
+        semantics. Validate the original first so parsing cannot erase unsafe
+        executable comments. The connector records the actual normalized SQL.
+        """
+        try:
+            query = parse_read_query(sql)
+        except ValueError:
+            return self.db.execute_query(sql)
+        # Resolve TiDB's case-insensitive aliases/CTEs on a separate tree.
+        # Keep emitted identifier spelling, including quoted names, unchanged.
+        resolution = query.copy()
+        original_columns = {id(copy): original for copy, original in
+            zip(resolution.find_all(exp.Column), query.find_all(exp.Column))}
+        for identifier in resolution.find_all(exp.Identifier):
+            identifier.set('this', identifier.this.lower())
+        for scope in traverse_scope(resolution):
+            for resolved_column in scope.columns:
+                if resolved_column.name not in ('forename', 'surname'):
+                    continue
+                source = scope.sources.get(resolved_column.table)
+                if not resolved_column.table and len(scope.sources) == 1:
+                    source = next(iter(scope.sources.values()))
+                if not isinstance(source, exp.Table) or source.name.lower() != 'drivers':
+                    continue
+                column = original_columns[id(resolved_column)]
+                equality = column.parent
+                if not isinstance(equality, exp.EQ):
+                    continue
+                other = equality.expression if equality.this is column else equality.this
+                if not isinstance(other, exp.Literal) or not other.is_string:
+                    continue
+                column.replace(exp.Collate(this=column.copy(),
+                    expression=exp.Var(this='utf8mb4_unicode_ci')))
+        return self.db.execute_query(query.sql(dialect='mysql'))
 
     def validate_results(self, question: str, sql: str, results: dict) -> dict:
         """

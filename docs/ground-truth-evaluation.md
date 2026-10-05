@@ -138,3 +138,21 @@ LIMIT rewrite. The final evaluator constructs a fresh SDK client with zero
 implicit retries and a 60-second timeout; failed executions now retain the
 exact capped SQL. Neither fix changes the saved result-equivalence/recovery
 counts. Recorded development results were replayed against the final comparator.
+
+## Completed results and post-evaluation repair replay
+
+The [October evaluation results](evaluation/results.md) link the complete,
+unchanged 40-case model run and independently labelled retrieval comparison.
+Its original score is retained after the observed issues were repaired.
+To repeat the separate saved-SQL check without any model calls:
+
+```powershell
+python tests/replay_saved_sql.py --output artifacts/benchmarks/saved-sql-replay-new.json
+```
+
+This re-executes the existing generated queries through the current tools,
+checks the unchanged snapshot hashes and emits complete large-list answers.
+It does not reclassify, retrieve or generate SQL, and must never be described
+as a fresh 40-question generative evaluation. The published repair artifact
+also records constant accent-comparison probes against local MySQL and the
+TLS-verified project TiDB connection; it does not establish production grants.

@@ -1,5 +1,7 @@
 # F1InsightAI — AI-Powered Formula 1 Text-to-SQL RAG Chatbot
 
+> October 2026 re-evaluation: **39/40 (97.5%) first-attempt; 39/40 (97.5%) final** on 40 independent reference-result contracts; dense MRR@7 **0.678 → 0.888**. See [current results](docs/evaluation/results.md). Historical measurements below are retained for context and are superseded as primary evidence.
+
 ## Project Report
 
 > Updated 4 October 2026: current claim definitions and software corrections are in [the evaluation audit](docs/evaluation-audit.md). Historical examples describe development observations, not independent accuracy validation. No fresh live model/database run is claimed.
@@ -404,7 +406,7 @@ class AgentState(TypedDict):
 The agent uses two conditional routing points:
 
 1. **After `classify`**: Routes to `retrieve_schema` (database query) or `direct_answer` (conversation)
-2. **After `reflect`**: Routes to `retry_sql` (if error, max 2 retries) or `generate_answer` (if results are valid)
+2. **After `reflect`**: Routes to `retry_sql` (if error, one correction after the initial attempt) or `generate_answer` (if results are valid)
 
 ### 10.4 Multi-Turn Context
 
@@ -740,7 +742,7 @@ The system prompt includes critical F1-specific knowledge to improve SQL accurac
 
 | Question | SQL Approach | Result |
 |----------|-------------|--------|
-| "Who has the most race wins?" | `GROUP BY driver, COUNT(*) WHERE position='1'` | ✅ Lewis Hamilton (103 wins) |
+| "Who has the most race wins?" | `GROUP BY driver, COUNT(*) WHERE position='1'` | Historical illustration: Hamilton (103); not the October snapshot result |
 | "Compare Hamilton and Verstappen" | Multi-driver `CASE WHEN` aggregation | ✅ Side-by-side comparison |
 | "Show 2023 race calendar" | `JOIN races + circuits WHERE year=2023` | ✅ 22 races with circuits |
 | "Schumacher's wins at Spa" | `LIKE '%Spa%'` for circuit matching | ✅ 6 wins |
@@ -792,8 +794,8 @@ has no recovered reproducible aggregate and is not a current performance claim.
 
 Implemented retrieval changes include filtering out messages and
 conversations, enriching schema descriptions, increasing retrieval context
-and using table co-occurrence rules. Their independent accuracy benefit
-has not been established.
+and using table co-occurrence rules. Their current independent-label retrieval scores are measured in the October
+study linked above; a causal execution-accuracy benefit has not been established.
 
 ### 14.5 SQL Execution Controls
 

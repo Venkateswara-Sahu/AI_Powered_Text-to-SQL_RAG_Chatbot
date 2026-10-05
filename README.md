@@ -18,16 +18,30 @@ This was the Jan–May 2026 industry project for **TransOrg Analytics (Pickl.AI)
 
 ## Evaluation snapshot
 
+Re-evaluated in October 2026 on a frozen copy of the original database:
+
 | Measure | Result | Scope |
 |---|---:|---|
-| Historical SQL-question smoke checks | **15/18 (83.3%)** | Generated SQL, nonempty results and expected answer keywords; not reference-result equivalence or first-attempt accuracy |
-| Historical retry success | **Not established** | The old benchmark read `steps`, while the API returns `agent_steps`; recorded zero counts cannot establish that retries were absent |
-| Retrieval improvement | **No validated aggregate claimed** | Schema enrichment, system-table filtering and co-occurrence rules are implemented; historical MRR aggregation is unresolved |
-| Database | **700,000+ rows** | 14 Formula 1 data tables in TiDB Cloud |
+| Independent reference-result correctness | **39/40 (97.5%) first-attempt; 39/40 (97.5%) final** | 40 authored evaluation SQL questions; 20 development questions kept separate |
+| Independently labelled dense MRR@7 | **0.678 → 0.888** | Plain vs enriched retrieval, identical embeddings and k; required-table labels withheld from the agent |
+| Macro Recall@7 | **0.838 → 0.950** | Fraction of all required tables retrieved |
+| Controlled SQL error recovery | **5/5** | Separate development probes with injected invalid-column errors; not a natural-query recovery rate |
+| Frozen database | **701,433 records / 14 tables** | Original F1 snapshot, isolated MySQL 8.4 copy, SELECT-only reader |
 
-The [March 2026 artifact](tests/benchmark_results.json) remains unchanged. Its legacy accuracy, retry and timing fields must be interpreted using the [evaluation audit](docs/evaluation-audit.md). No fresh live model/database benchmark is claimed by the repair. Offline regression tests establish the corrected software behavior, not model accuracy or deployment readiness.
+See the [complete results and raw evidence](docs/evaluation/results.md) and
+[protocol](docs/ground-truth-evaluation.md). This is a small authored,
+single-domain study with related query patterns, not an arbitrary-query
+accuracy guarantee or production deployment assessment. Runtime diagnostics
+still use generated SQL as a relevance proxy; the independent scores above
+come from the separate evaluation. The [March artifact](tests/benchmark_results.json)
+and [historical audit](docs/evaluation-audit.md) remain unchanged.
 
-### Reproduce the software checks
+The [results](docs/evaluation/results.md#observed-failures-and-subsequent-repairs)
+also document the accent mismatch and two truncated narrative lists found in
+the frozen run, their subsequent repairs and a separately labelled saved-SQL
+replay. The original 39/40 model-run score is retained.
+
+### Reproduce the checks
 
 ```bash
 python -m pip install -r requirements-test.txt
@@ -35,13 +49,11 @@ python -m pytest -q
 node tests/metric_bar_check.cjs
 ```
 
-To run a fresh smoke benchmark against your running API:
-
-```bash
-python tests/benchmark.py --api-url http://localhost:5000/api/chat
-```
-
-Each run creates a new JSON artifact under `artifacts/benchmarks/`, including the suite/code hashes, raw API responses, trace availability and observed retries. Unexercised retry rates are `null`. These checks still use answer keywords; independent reference SQL/results and a fixed database snapshot are needed before claiming execution accuracy.
+The [protocol](docs/ground-truth-evaluation.md) documents restoring the original
+snapshot, checking table/reference hashes and running the live model evaluation.
+`tests/benchmark.py --api-url http://localhost:5000/api/chat` remains available
+for API smoke checks; those keyword checks are separate from reference-result
+evaluation.
 
 ### SQL execution boundary
 
@@ -49,7 +61,7 @@ Agent validation and database execution share a parsed MySQL query policy. It ac
 
 With `MYSQL_SSL=true`, both pooled and fallback connections verify the certificate and hostname against `MYSQL_SSL_CA` (defaults to the certifi CA bundle). A TLS verification failure is not retried with verification disabled. The default query result cap is 50 rows; `SQL_MAX_ROWS` also bounds explicitly requested connector limits.
 
-These are application controls. Database grants, query execution-time limits and live TLS connectivity have not been verified here. Conversation storage currently uses the same connection account and needs writes, so this project does not claim a separately enforced read-only database identity. Use restricted grants and isolate generated-query credentials before exposing sensitive data.
+These are application controls. The isolated evaluation verified SELECT-only grants and a 15-second server query cap. Production TiDB grants and execution-time limits remain unverified. Conversation storage currently uses the same connection account and needs writes, so this project does not claim a separately enforced read-only database identity. Use restricted grants and isolate generated-query credentials before exposing sensitive data.
 
 ## ✨ Features
 
@@ -59,7 +71,7 @@ These are application controls. Database grants, query execution-time limits and
 - **LangGraph Agentic Pipeline** — Multi-step reasoning with classify → retrieve → generate → execute → reflect → answer
 - **Error-Guided Retry Path** — The agent can attempt SQL correction after an execution error; successful correction is not guaranteed
 - **SQL Execution Policy** — Shared parsed SELECT validation, side-effect checks and bounded result rows
-- **Groq API** — Lightning-fast inference using GPT OSS 120B (free tier)
+- **Groq API** — Hosted inference using GPT OSS 120B (free tier)
 - **Retrieval Diagnostics** — Per-query reciprocal rank and table recall use generated SQL as a relevance proxy; answer checks measure result-value substring coverage
 
 ### User Experience
@@ -117,12 +129,12 @@ User Question
 │  └──────┬───────┘                                    │
 │         ▼                                            │
 │  ┌─────────────┐                                     │
-│  │ execute_sql │  TiDB Cloud (read-only)             │
+│  │ execute_sql │  TiDB Cloud (SELECT policy)             │
 │  └──────┬──────┘                                     │
 │         ▼                                            │
 │  ┌─────────┐    ❌ error                              │
 │  │ reflect │───────────▶ retry_sql ──┐               │
-│  └────┬────┘            (up to 2x)   │               │
+│  └────┬────┘            (one correction)   │               │
 │       │ ✅ ok       ◀────────────────┘               │
 │       ▼                                              │
 │  ┌─────────────────┐                                 │
