@@ -6,8 +6,7 @@ A stateful agent that uses tools to:
 2. Generate SQL with the LLM
 3. Execute SQL safely
 4. Self-reflect on results (retry if bad)
-5. Decompose complex questions into sub-queries
-6. Generate natural language answers
+5. Generate natural language answers and follow-up suggestions
 """
 
 from typing import TypedDict, Annotated, Any
@@ -297,11 +296,15 @@ class SQLAgent:
                 "action": "LLM generated SQL",
                 "result": sql[:100] + "..." if len(sql) > 100 else sql,
                 "safe": is_safe,
+                "sql": sql,
+                "attempt": state.get("sql_attempts", 0) + 1,
+                "raw_response": raw,
             }
 
             if not is_safe:
                 return {
                     "sql": "",
+                    "sql_attempts": state.get("sql_attempts", 0) + 1,
                     "error": safety_err,
                     "agent_steps": state.get("agent_steps", []) + [step],
                 }
@@ -315,6 +318,7 @@ class SQLAgent:
         except Exception as e:
             return {
                 "sql": "",
+                "sql_attempts": state.get("sql_attempts", 0) + 1,
                 "error": f"SQL generation failed: {str(e)}",
                 "agent_steps": state.get("agent_steps", []) + [{
                     "node": "generate_sql", "action": "Failed", "result": str(e)
@@ -329,7 +333,10 @@ class SQLAgent:
             return {
                 "execution_result": {"success": False, "error": state.get("error", "No SQL generated"), "rows": [], "columns": [], "row_count": 0},
                 "agent_steps": state.get("agent_steps", []) + [{
-                    "node": "execute_sql", "action": "Skipped", "result": "No SQL to execute"
+                    "node": "execute_sql", "action": "Skipped", "result": "No SQL to execute",
+                    "attempt": state.get("sql_attempts", 0), "sql": "",
+                    "execution_result": {"success": False, "error": state.get("error", "No SQL generated"),
+                                         "rows": [], "columns": [], "row_count": 0},
                 }],
             }
 
@@ -337,6 +344,9 @@ class SQLAgent:
 
         step = {
             "node": "execute_sql",
+            "attempt": state.get("sql_attempts", 0),
+            "sql": result.get("executed_sql", sql),
+            "execution_result": result,
             "action": f"Executed SQL",
             "result": f"{'✅' if result['success'] else '❌'} {result.get('row_count', 0)} rows" +
                       (f" | Error: {result.get('error', '')}" if not result['success'] else ""),
@@ -344,6 +354,7 @@ class SQLAgent:
 
         return {
             "execution_result": result,
+            "sql": result.get("executed_sql", sql),
             "agent_steps": state.get("agent_steps", []) + [step],
         }
 
@@ -416,6 +427,9 @@ class SQLAgent:
 
             step = {
                 "node": "retry_sql",
+                "attempt": state.get("sql_attempts", 0) + 1,
+                "sql": sql,
+                "raw_response": response.content,
                 "action": f"Retry attempt #{state.get('sql_attempts', 0) + 1}",
                 "result": sql[:100] if is_safe else f"Unsafe: {safety_err}",
             }
@@ -446,14 +460,22 @@ class SQLAgent:
         if not result.get("success"):
             answer = f"I generated the SQL but it failed to execute: {result.get('error', 'Unknown error')}"
         elif not result.get("rows"):
-            answer = "The query executed successfully but returned no results. Try broadening your question."
+            answer = "The query executed successfully and found no matching rows."
+        elif len(result["rows"]) > 20:
+            # Large lists previously supplied only twenty rows to an 800-token
+            # summary call. Render all connector-bounded rows directly so a
+            # complete list cannot lose its tail to input/output truncation.
+            columns = result.get("columns") or list(result["rows"][0])
+            answer = "\n".join(
+                "- " + "; ".join(
+                    f"{column}: {row.get(column) if row.get(column) is not None else 'NULL'}"
+                    for column in columns)
+                for row in result["rows"])
         else:
             # Format results for the prompt
             results_text = ""
-            for row in result["rows"][:20]:
+            for row in result["rows"]:
                 results_text += f"  {row}\n"
-            if result["row_count"] > 20:
-                results_text += f"  ... and {result['row_count'] - 20} more rows\n"
 
             user_msg = ANSWER_USER_TEMPLATE.format(
                 question=question,
@@ -530,7 +552,7 @@ class SQLAgent:
             return {"follow_ups": []}
 
     def _compute_rag_metrics(self, state: AgentState, answer: str) -> dict:
-        """Compute RAG evaluation metrics: MRR, Recall@K, Context Relevance, Faithfulness."""
+        """Compute generated-SQL table proxies and result-value substring coverage."""
         sql = state.get("sql", "")
         retrieved_tables = state.get("retrieved_tables", [])
         execution_result = state.get("execution_result", {})
@@ -545,14 +567,9 @@ class SQLAgent:
         if not tables_in_sql:
             return {}
 
-        # ── MRR (Mean Reciprocal Rank) ──
-        # Find the rank of the first SQL-used table in the FAISS results
-        mrr = 0.0
-        for needed_table in tables_in_sql:
-            if needed_table in retrieved_names:
-                rank = retrieved_names.index(needed_table) + 1
-                mrr = 1.0 / rank
-                break  # MRR uses the FIRST relevant result
+        # Single-query reciprocal rank (generated SQL supplies relevance).
+        mrr = next((1.0 / rank for rank, table in enumerate(retrieved_names, 1)
+                    if table in tables_in_sql), 0.0)
 
         # ── Recall@K ──
         # Of all tables needed by SQL, how many were retrieved?
@@ -569,6 +586,10 @@ class SQLAgent:
         faithfulness = self.tools.compute_faithfulness(answer, execution_result)
 
         return {
+            "relevance_source": "generated_sql_table_proxy",
+            "answer_check_type": "result_value_substring_coverage",
+            "reciprocal_rank": round(mrr, 4),
+            # Compatibility key; this is one query's RR, not a dataset mean.
             "mrr": round(mrr, 4),
             "recall_at_k": round(recall_at_k, 4),
             "k": k,
@@ -627,6 +648,7 @@ class SQLAgent:
                     "columns": result.get("columns", []),
                     "rows": result.get("rows", []),
                     "row_count": result.get("row_count", 0),
+                    "row_limit": result.get("row_limit"),
                 } if result.get("success") else None,
                 "execution_time": elapsed,
                 "follow_ups": final_state.get("follow_ups", []),

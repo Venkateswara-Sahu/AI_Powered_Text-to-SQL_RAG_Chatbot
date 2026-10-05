@@ -1,8 +1,15 @@
 """Agent tools — callable functions the LangGraph agent can invoke."""
+from __future__ import annotations
 
 import re
 from database.connector import DatabaseConnector
-from rag.embeddings import SchemaRAG
+from typing import TYPE_CHECKING
+from sqlglot import parse_one, exp
+from sqlglot.errors import SqlglotError
+from sqlglot.optimizer.scope import traverse_scope
+from database.sql_policy import validate_read_query, parse_read_query
+if TYPE_CHECKING:
+    from rag.embeddings import SchemaRAG
 from llm.prompt_templates import SYSTEM_PROMPT, FEW_SHOT_EXAMPLES
 
 
@@ -17,13 +24,67 @@ class AgentTools:
         """Retrieve relevant schema context for a question using FAISS RAG."""
         try:
             context = self.rag.retrieve(question)
-            return context if context else "No relevant schema found."
+            if not context:
+                return "No relevant schema found."
+            # Rich prose/sample rows support retrieval; SQL generation needs
+            # exact column names/types/keys rather than repeated index prose.
+            compact=[]
+            for document in context.split("\n---\n"):
+                table=[]
+                section=None
+                for line in document.splitlines():
+                    stripped=line.strip()
+                    if stripped.startswith('Table:'):
+                        table.append(stripped)
+                    elif stripped in ('Columns:','Foreign Keys:'):
+                        section=stripped
+                    elif stripped.startswith('Sample Data:'):
+                        section=None
+                    elif stripped.startswith('- ') and section:
+                        table.append(stripped)
+                compact.append('\n'.join(table))
+            return '\n---\n'.join(compact)
         except Exception as e:
             return f"Schema lookup failed: {str(e)}"
 
     def execute_sql(self, sql: str) -> dict:
-        """Execute a read-only SQL query safely."""
-        return self.db.execute_query(sql)
+        """Execute SELECT SQL with human-name equality normalization.
+
+        Only literal equalities on physical drivers.forename/surname change.
+        Stable identifiers, patterns, other tables and CTE shadows retain their
+        semantics. Validate the original first so parsing cannot erase unsafe
+        executable comments. The connector records the actual normalized SQL.
+        """
+        try:
+            query = parse_read_query(sql)
+        except ValueError:
+            return self.db.execute_query(sql)
+        # Resolve TiDB's case-insensitive aliases/CTEs on a separate tree.
+        # Keep emitted identifier spelling, including quoted names, unchanged.
+        resolution = query.copy()
+        original_columns = {id(copy): original for copy, original in
+            zip(resolution.find_all(exp.Column), query.find_all(exp.Column))}
+        for identifier in resolution.find_all(exp.Identifier):
+            identifier.set('this', identifier.this.lower())
+        for scope in traverse_scope(resolution):
+            for resolved_column in scope.columns:
+                if resolved_column.name not in ('forename', 'surname'):
+                    continue
+                source = scope.sources.get(resolved_column.table)
+                if not resolved_column.table and len(scope.sources) == 1:
+                    source = next(iter(scope.sources.values()))
+                if not isinstance(source, exp.Table) or source.name.lower() != 'drivers':
+                    continue
+                column = original_columns[id(resolved_column)]
+                equality = column.parent
+                if not isinstance(equality, exp.EQ):
+                    continue
+                other = equality.expression if equality.this is column else equality.this
+                if not isinstance(other, exp.Literal) or not other.is_string:
+                    continue
+                column.replace(exp.Collate(this=column.copy(),
+                    expression=exp.Var(this='utf8mb4_unicode_ci')))
+        return self.db.execute_query(query.sql(dialect='mysql'))
 
     def validate_results(self, question: str, sql: str, results: dict) -> dict:
         """
@@ -38,20 +99,10 @@ class AgentTools:
         row_count = results.get("row_count", 0)
         rows = results.get("rows", [])
 
-        # Check for empty results on questions that expect data
-        question_lower = question.lower()
-        if row_count == 0:
-            expecting_data = any(w in question_lower for w in [
-                "how many", "count", "total", "list", "show", "top", "all"
-            ])
-            if expecting_data:
-                issues.append(f"Query returned 0 rows but the question expects data. The SQL might be too restrictive.")
-
-        # Check for suspiciously large single values
-        if rows and len(rows) == 1:
-            for key, val in rows[0].items():
-                if isinstance(val, (int, float)) and val < 0:
-                    issues.append(f"Negative value found in '{key}': {val}. This might indicate a calculation error.")
+        # Empty sets and negative values can be correct (absent entities,
+        # geographical coordinates or signed differences). Without independent
+        # ground truth they are not grounds for changing a successfully executed
+        # query. Retry execution errors; evaluate semantic correctness separately.
 
         return {
             "is_valid": len(issues) == 0,
@@ -97,9 +148,19 @@ class AgentTools:
         """Extract table names referenced in a SQL query (FROM and JOIN clauses)."""
         if not sql:
             return []
-        # Match table names after FROM, JOIN, and their variants
-        pattern = r'(?:FROM|JOIN)\s+`?(\w+)`?'
-        matches = re.findall(pattern, sql, re.IGNORECASE)
+        try:
+            query = parse_one(sql, read="mysql")
+        except SqlglotError:
+            return []
+        # TiDB resolves table/CTE identifiers case-insensitively. Normalize
+        # before scope resolution, not just when returning table names.
+        for identifier in query.find_all(exp.Identifier):
+            identifier.set("this", identifier.this.lower())
+        physical_tables = {id(source) for scope in traverse_scope(query)
+                           for source in scope.sources.values()
+                           if isinstance(source, exp.Table)}
+        matches = [table.name for table in query.find_all(exp.Table)
+                   if id(table) in physical_tables]
         # Deduplicate while preserving order
         seen = set()
         tables = []
@@ -113,18 +174,18 @@ class AgentTools:
     @staticmethod
     def compute_faithfulness(answer: str, execution_result: dict) -> dict:
         """
-        Check if the LLM answer is faithful to the SQL query results.
-        Compares key values from results against the answer text.
+        Heuristic substring coverage of selected result values in answer text.
+        This does not establish factual correctness or semantic faithfulness.
 
         Returns:
             dict with score (0-1), matched, total, details
         """
         if not answer or not execution_result.get("success"):
-            return {"score": 0, "matched": 0, "total": 0, "details": []}
+            return {"score": None, "matched": 0, "total": 0, "details": []}
 
         rows = execution_result.get("rows", [])
         if not rows:
-            return {"score": 1.0, "matched": 0, "total": 0, "details": []}
+            return {"score": None, "matched": 0, "total": 0, "details": []}
 
         answer_lower = answer.lower()
 
@@ -143,7 +204,7 @@ class AgentTools:
                 values_to_check.append({"column": key, "value": val_str})
 
         if not values_to_check:
-            return {"score": 1.0, "matched": 0, "total": 0, "details": []}
+            return {"score": None, "matched": 0, "total": 0, "details": []}
 
         # Check each value in the answer
         matched = 0
@@ -159,7 +220,7 @@ class AgentTools:
             })
 
         total = len(values_to_check)
-        score = round(matched / total, 4) if total > 0 else 1.0
+        score = round(matched / total, 4) if total > 0 else None
 
         return {
             "score": score,
@@ -170,19 +231,5 @@ class AgentTools:
 
     @staticmethod
     def validate_sql_safety(sql: str) -> tuple:
-        """Check SQL is read-only. Returns (is_safe, error)."""
-        blocked = [
-            "DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE",
-            "CREATE", "REPLACE", "RENAME", "GRANT", "REVOKE"
-        ]
-        upper = sql.upper()
-        for kw in blocked:
-            if re.search(rf"\b{kw}\b", upper):
-                return False, f"Blocked: SQL contains '{kw}'"
-
-        if not (upper.lstrip().startswith("SELECT") or
-                upper.lstrip().startswith("WITH") or
-                upper.lstrip().startswith("SHOW")):
-            return False, "Only SELECT/WITH/SHOW queries are allowed."
-
-        return True, ""
+        """Apply the same parsed-query policy used at database execution."""
+        return validate_read_query(sql)

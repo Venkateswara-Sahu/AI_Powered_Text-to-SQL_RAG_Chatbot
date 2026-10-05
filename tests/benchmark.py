@@ -12,6 +12,122 @@ import sys
 
 API_URL = "http://localhost:5000/api/chat"
 
+
+def compare_result_rows(actual, expected, ordered=False, rel_tol=0, abs_tol=1e-6):
+    """Compare projections by column position, preserving multiplicity and NULL.
+
+    Aliases are immaterial; projection width/order is part of the question contract.
+    Numeric serialization differences are tolerated, but two strings remain strings.
+    """
+    from decimal import Decimal, InvalidOperation
+    from numbers import Number
+    from math import isclose
+    if len(actual) != len(expected):
+        return False
+
+    def equal_value(a, b):
+        if a is None or b is None:
+            return a is b
+        if isinstance(a, bool) or isinstance(b, bool):
+            return type(a) is type(b) and a == b
+        if isinstance(a, Number) or isinstance(b, Number):
+            try:
+                left, right = Decimal(str(a)), Decimal(str(b))
+                if isinstance(a, int) or isinstance(b, int):
+                    return left == right
+                return isclose(float(left), float(right),
+                               rel_tol=rel_tol, abs_tol=abs_tol)
+            except (InvalidOperation, ValueError, TypeError):
+                return False
+        return a == b
+
+    def equal_row(a, b):
+        left, right = list(a.values()), list(b.values())
+        return len(left) == len(right) and all(equal_value(x, y) for x, y in zip(left, right))
+
+    if ordered:
+        return all(equal_row(a, b) for a, b in zip(actual, expected))
+    # Maximum bipartite matching avoids greedy tolerance/duplicate collisions.
+    matched = {}
+    def assign(index, visited):
+        for other, row in enumerate(expected):
+            if other not in visited and equal_row(actual[index], row):
+                visited.add(other)
+                if other not in matched or assign(matched[other], visited):
+                    matched[other] = index
+                    return True
+        return False
+    return all(assign(index, set()) for index in range(len(actual)))
+
+
+def compare_result_sets(actual, expected, ordered=False):
+    """Even an empty result must expose the requested projection width."""
+    from decimal import Decimal, InvalidOperation
+    if len(actual.get('columns',[])) != len(expected.get('columns',[])):
+        return False
+    numeric = set(expected.get('numeric_columns',[]))
+    integers = set(expected.get('integer_columns',[]))
+    def normalize(rows,columns):
+        output=[]
+        for row in rows:
+            if len(row)!=len(columns):
+                raise ValueError('Result projection cannot be represented without duplicate/missing columns.')
+            values=[]
+            for index,name in enumerate(columns):
+                value=row[name]
+                if value is not None and index in numeric:
+                    value=Decimal(str(value))
+                    if index in integers and value == value.to_integral_value():
+                        value=int(value)
+                values.append(value)
+            output.append(dict(enumerate(values)))
+        return output
+    try:
+        return compare_result_rows(normalize(actual.get('rows',[]),actual.get('columns',[])),
+                                   normalize(expected.get('rows',[]),expected.get('columns',[])),ordered=ordered)
+    except (InvalidOperation,ValueError,TypeError,KeyError):
+        return False
+
+
+def score_retrieval(ranked_tables, required_tables, k=7):
+    """Independent reference labels, never generated SQL, define relevance."""
+    required = set(required_tables)
+    if not required:
+        raise ValueError('Retrieval cases require nonempty independent table labels.')
+    ranked = list(dict.fromkeys(ranked_tables))[:k]
+    found = required.intersection(ranked)
+    return {
+        'reciprocal_rank': next((1 / rank for rank, name in enumerate(ranked, 1)
+                                 if name in required), 0.0),
+        'recall_at_k': len(found) / len(required),
+        'precision_at_k': len(found) / len(ranked) if ranked else 0.0,
+        'all_required_tables_found': found == required,
+    }
+
+
+def summarize_evaluation(records):
+    """All cases, including provider/execution failures, remain in denominators."""
+    import statistics
+    n = len(records)
+    final = sum(bool(r['final_correct']) for r in records)
+    first = sum(bool(r['first_attempt_correct']) for r in records)
+    retried = [r for r in records if r['retries'] > 0]
+    recovered = sum(not r['first_attempt_correct'] and r['final_correct'] for r in retried)
+    times = sorted(r['elapsed_s'] for r in records)
+    def quantile(p):
+        if not times:
+            return None
+        index = (len(times)-1)*p
+        low = int(index)
+        return times[low]+(times[min(low+1,len(times)-1)]-times[low])*(index-low)
+    return {'cases':n,'first_attempt_correct':first,'final_correct':final,
+            'first_attempt_execution_accuracy':first/n if n else None,
+            'final_execution_accuracy':final/n if n else None,
+            'retried_cases':len(retried),'retry_recovered_cases':recovered,
+            'retry_recovery_rate':recovered/len(retried) if retried else None,
+            'mean_latency_s':statistics.mean(times) if times else None,
+            'p50_latency_s':quantile(.5),'p95_latency_s':quantile(.95)}
+
 # ── Test Cases ────────────────────────────────────────────
 # Each test has: question, expected_type, validation keywords/checks
 TEST_QUERIES = [
@@ -157,186 +273,128 @@ TEST_QUERIES = [
 ]
 
 
-def run_benchmark():
-    """Run all test queries and collect metrics."""
-    print("=" * 70)
-    print("  F1InsightAI — Performance Benchmark")
-    print(f"  Testing {len(TEST_QUERIES)} queries against {API_URL}")
-    print("=" * 70)
-    print()
+def run_benchmark(api_url=None, output_path=None, queries=None):
+    """Record keyword/result-presence smoke checks, not SQL execution accuracy.
 
+    A fresh artifact is written for every run. The historical March result is
+    never overwritten. Retry estimates require the API's agent_steps trace.
+    """
+    from datetime import datetime, timezone
+    from pathlib import Path
+    import hashlib
+
+    api_url = api_url or API_URL
+    queries = TEST_QUERIES if queries is None else queries
     results = []
-    total_time = 0
-
-    for i, test in enumerate(TEST_QUERIES, 1):
-        question = test["question"]
-        print(f"[{i:2d}/{len(TEST_QUERIES)}] {question}")
-
-        start = time.time()
+    for test in queries:
+        record = {**test, "status": "ERROR", "error": None, "retries": None,
+                  "retry_trace_available": False, "has_results": False,
+                  "sql_generated": False}
+        start = time.perf_counter()
         try:
-            resp = requests.post(API_URL, json={"message": question}, timeout=60)
-            elapsed = time.time() - start
-            total_time += elapsed
-
-            if resp.status_code != 200:
-                print(f"       ❌ HTTP {resp.status_code}")
-                results.append({**test, "status": "HTTP_ERROR", "time": elapsed, "retries": 0, "has_results": False})
-                continue
-
-            data = resp.json()
-            answer = (data.get("answer") or "").lower()
-            sql = data.get("sql") or ""
-            rows = data.get("results", {}).get("rows", [])
-            steps = data.get("steps", [])
-            error = data.get("error")
-
-            # Count retries from agent steps
-            retries = sum(1 for s in steps if s.get("node") == "retry_sql")
-
-            # Check if SQL was generated when expected
-            sql_generated = bool(sql.strip())
-            correct_type = (sql_generated == test["expect_sql"])
-
-            # Check if we got results (for SQL queries)
-            has_results = len(rows) > 0 if test["expect_sql"] else True
-
-            # Validate expected keywords in the answer
-            validation_pass = True
-            failed_keywords = []
-            for keyword in test["validation"]:
-                if keyword.lower() not in answer:
-                    validation_pass = False
-                    failed_keywords.append(keyword)
-
-            # Determine overall status
-            if error and not has_results:
-                status = "ERROR"
-            elif not correct_type:
-                status = "WRONG_TYPE"
-            elif not has_results and test["expect_sql"]:
-                status = "NO_RESULTS"
-            elif not validation_pass:
-                status = "VALIDATION_FAIL"
+            response = requests.post(api_url, json={"message": test["question"]}, timeout=60)
+            if response.status_code != 200:
+                record.update(status="HTTP_ERROR", error=f"HTTP {response.status_code}")
             else:
-                status = "PASS"
-
-            status_icon = "✅" if status == "PASS" else "⚠️" if status in ("NO_RESULTS", "VALIDATION_FAIL") else "❌"
-            retry_str = f" (retries: {retries})" if retries > 0 else ""
-            print(f"       {status_icon} {status} — {elapsed:.2f}s{retry_str}")
-            if failed_keywords:
-                print(f"          Missing keywords: {failed_keywords}")
-
-            results.append({
-                **test,
-                "status": status,
-                "time": elapsed,
-                "retries": retries,
-                "has_results": has_results,
-                "sql_generated": sql_generated,
-            })
-
+                data = response.json()
+                if not isinstance(data, dict):
+                    raise ValueError("Expected a JSON object response")
+                record["response"] = data
+                answer = (data.get("answer") or "").lower()
+                sql = data.get("sql") or ""
+                result_data = data.get("results") or {}
+                rows = result_data.get("rows") or []
+                steps = data.get("agent_steps")
+                if isinstance(steps, list):
+                    record["retry_trace_available"] = True
+                    record["retries"] = sum(
+                        1 for step in steps
+                        if isinstance(step, dict) and step.get("node") == "retry_sql"
+                    )
+                record["sql_generated"] = bool(sql.strip())
+                record["has_results"] = bool(rows) if test["expect_sql"] else True
+                record["error"] = data.get("error")
+                record["failed_keywords"] = [
+                    keyword for keyword in test["validation"]
+                    if keyword.lower() not in answer
+                ]
+                if record["error"]:
+                    record["status"] = "ERROR"
+                elif record["sql_generated"] != test["expect_sql"]:
+                    record["status"] = "WRONG_TYPE"
+                elif test["expect_sql"] and not rows:
+                    record["status"] = "NO_RESULTS"
+                elif record["failed_keywords"]:
+                    record["status"] = "VALIDATION_FAIL"
+                else:
+                    record["status"] = "PASS"
         except requests.exceptions.Timeout:
-            elapsed = time.time() - start
-            print(f"       ❌ TIMEOUT after {elapsed:.1f}s")
-            results.append({**test, "status": "TIMEOUT", "time": elapsed, "retries": 0, "has_results": False})
+            record.update(status="TIMEOUT", error="Request timed out")
+        except (ValueError, TypeError, AttributeError) as exc:
+            record.update(status="RESPONSE_ERROR", error=str(exc))
+        except requests.exceptions.RequestException as exc:
+            record.update(status="HTTP_ERROR", error=str(exc))
+        finally:
+            record["time"] = round(time.perf_counter() - start, 6)
+            results.append(record)
+        print(f"{record['status']}: {test['question']} ({record['time']:.2f}s)")
 
-        except Exception as e:
-            elapsed = time.time() - start
-            print(f"       ❌ ERROR: {e}")
-            results.append({**test, "status": "ERROR", "time": elapsed, "retries": 0, "has_results": False})
-
-    # ── Print Summary ─────────────────────────────────────
-    print()
-    print("=" * 70)
-    print("  BENCHMARK RESULTS")
-    print("=" * 70)
-
-    total = len(results)
-    passed = sum(1 for r in results if r["status"] == "PASS")
-    no_results = sum(1 for r in results if r["status"] == "NO_RESULTS")
-    validation_fail = sum(1 for r in results if r["status"] == "VALIDATION_FAIL")
-    errors = sum(1 for r in results if r["status"] in ("ERROR", "HTTP_ERROR", "TIMEOUT"))
-    wrong_type = sum(1 for r in results if r["status"] == "WRONG_TYPE")
-
-    sql_queries = [r for r in results if r["expect_sql"]]
-    sql_passed = sum(1 for r in sql_queries if r["status"] == "PASS")
-    sql_with_retries = sum(1 for r in sql_queries if r.get("retries", 0) > 0)
-    sql_retry_success = sum(1 for r in sql_queries if r.get("retries", 0) > 0 and r["status"] == "PASS")
-
-    conv_queries = [r for r in results if not r["expect_sql"]]
-    conv_passed = sum(1 for r in conv_queries if r["status"] == "PASS")
-
-    avg_time = total_time / total if total > 0 else 0
+    sql_cases = [r for r in results if r["expect_sql"]]
+    passed = sum(r["status"] == "PASS" for r in results)
+    sql_passed = sum(r["status"] == "PASS" for r in sql_cases)
+    retry_cases = [r for r in sql_cases if r["retries"] is not None and r["retries"] > 0]
+    retry_passed = sum(r["status"] == "PASS" for r in retry_cases)
     times = [r["time"] for r in results]
+    def percentage(numerator, denominator):
+        return round(100 * numerator / denominator, 1) if denominator else None
 
-    print(f"\n  Total Queries:              {total}")
-    print(f"  ✅ Passed:                   {passed}/{total} ({100*passed/total:.1f}%)")
-    print(f"  ⚠️  No Results:              {no_results}")
-    print(f"  ⚠️  Validation Failed:       {validation_fail}")
-    print(f"  ❌ Errors/Timeouts:          {errors}")
-    print(f"  ❌ Wrong Classification:     {wrong_type}")
-
-    print(f"\n  --- SQL Query Accuracy ---")
-    print(f"  SQL Queries Tested:         {len(sql_queries)}")
-    print(f"  First-Attempt Accuracy:     {sql_passed}/{len(sql_queries)} ({100*sql_passed/len(sql_queries):.1f}%)")
-    print(f"  Queries Needing Retry:      {sql_with_retries}")
-    if sql_with_retries > 0:
-        print(f"  Retry Success Rate:         {sql_retry_success}/{sql_with_retries} ({100*sql_retry_success/sql_with_retries:.1f}%)")
-
-    print(f"\n  --- Conversational ---")
-    print(f"  Conversational Queries:     {len(conv_queries)}")
-    print(f"  Correctly Classified:       {conv_passed}/{len(conv_queries)}")
-
-    print(f"\n  --- Response Time ---")
-    print(f"  Average:                    {avg_time:.2f}s")
-    print(f"  Min:                        {min(times):.2f}s")
-    print(f"  Max:                        {max(times):.2f}s")
-
-    print(f"\n  --- By Category ---")
-    categories = {}
-    for r in results:
-        cat = r["category"]
-        if cat not in categories:
-            categories[cat] = {"total": 0, "passed": 0}
-        categories[cat]["total"] += 1
-        if r["status"] == "PASS":
-            categories[cat]["passed"] += 1
-
-    for cat, stats in sorted(categories.items()):
-        pct = 100 * stats["passed"] / stats["total"]
-        print(f"  {cat:25s}  {stats['passed']}/{stats['total']} ({pct:.0f}%)")
-
-    print("\n" + "=" * 70)
-
-    # ── Save results to JSON ──────────────────────────────
+    now = datetime.now(timezone.utc)
     output = {
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "total_queries": total,
-        "overall_accuracy": round(100 * passed / total, 1),
-        "sql_accuracy": round(100 * sql_passed / len(sql_queries), 1) if sql_queries else 0,
-        "avg_response_time": round(avg_time, 2),
-        "min_response_time": round(min(times), 2),
-        "max_response_time": round(max(times), 2),
-        "retries_needed": sql_with_retries,
-        "retry_success_rate": round(100 * sql_retry_success / sql_with_retries, 1) if sql_with_retries > 0 else 100.0,
-        "results": [
-            {
-                "question": r["question"],
-                "category": r["category"],
-                "status": r["status"],
-                "time": round(r["time"], 2),
-                "retries": r.get("retries", 0),
-            }
-            for r in results
-        ],
+        "schema_version": 2,
+        "timestamp": now.isoformat(),
+        "api_url": api_url,
+        "methodology": "SQL generation, nonempty results and answer-keyword smoke checks; not reference-result equivalence",
+        "suite_sha256": hashlib.sha256(
+            json.dumps(queries, sort_keys=True).encode("utf-8")
+        ).hexdigest(),
+        "benchmark_code_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "total_queries": len(results),
+        "checks_passed": passed,
+        "check_pass_rate": percentage(passed, len(results)),
+        "sql_queries": len(sql_cases),
+        "sql_checks_passed": sql_passed,
+        "sql_check_pass_rate": percentage(sql_passed, len(sql_cases)),
+        "sql_cases_with_retry_trace": sum(r["retry_trace_available"] for r in sql_cases),
+        "sql_checks_passed_without_retry": sum(
+            r["status"] == "PASS" and r["retries"] == 0 for r in sql_cases
+        ),
+        "avg_response_time": round(sum(times) / len(times), 2) if times else None,
+        "min_response_time": round(min(times), 2) if times else None,
+        "max_response_time": round(max(times), 2) if times else None,
+        "retries_needed": len(retry_cases),
+        "retry_checks_passed": retry_passed,
+        "retry_success_rate": percentage(retry_passed, len(retry_cases)),
+        "results": results,
     }
-
-    output_path = "tests/benchmark_results.json"
-    with open(output_path, "w") as f:
-        json.dump(output, f, indent=2)
-    print(f"\n  Results saved to: {output_path}")
-    print()
+    output_path = Path(output_path) if output_path else (
+        Path("artifacts/benchmarks") / f"{now.strftime('%Y%m%dT%H%M%S%fZ')}.json"
+    )
+    # Historical measurements must remain available even with an explicit path.
+    historical = Path(__file__).with_name("benchmark_results.json").resolve()
+    if output_path.resolve() == historical:
+        raise ValueError("The historical benchmark artifact is immutable; choose a new output path.")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("x", encoding="utf-8") as handle:
+        json.dump(output, handle, indent=2, ensure_ascii=False, allow_nan=False)
+    print(f"SQL smoke checks: {sql_passed}/{len(sql_cases)}; retry cases: {len(retry_cases)}")
+    print(f"Results saved to: {output_path}")
+    return output
 
 
 if __name__ == "__main__":
-    run_benchmark()
+    import argparse
+    parser = argparse.ArgumentParser(description="Run F1 API smoke checks and preserve a fresh artifact.")
+    parser.add_argument("--api-url", default=API_URL)
+    parser.add_argument("--output", help="New JSON path; existing files are never overwritten.")
+    args = parser.parse_args()
+    run_benchmark(api_url=args.api_url, output_path=args.output)

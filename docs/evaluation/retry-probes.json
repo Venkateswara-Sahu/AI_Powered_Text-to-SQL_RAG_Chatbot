@@ -1,0 +1,3395 @@
+{
+  "schema_version": 3,
+  "timestamp": "2026-10-04T17:09:28.880661+00:00",
+  "split": "controlled_retry_probe",
+  "snapshot": {
+    "source_backup_sha256": "4235e1e701350ba9b294cb8b11b7dd7fa27324e5f9dbcd193095a450cdbe7c4a",
+    "f1_only_sql_sha256": "7e07f7806742dcea6007933d08212500f7e6bd9951f76251b8f15ce2b6f53368",
+    "tables": {
+      "circuits": {
+        "rows": 77,
+        "content_sha256": "815c943e2afb1ae8cdb1767629a72b6a51cc07bfcfff2b2d50b077da3618262f"
+      },
+      "constructor_results": {
+        "rows": 12625,
+        "content_sha256": "fedf4d0fa5e7f7916843af0cbf04d3ffeba65ca20105779030a01514313dedea"
+      },
+      "constructor_standings": {
+        "rows": 13391,
+        "content_sha256": "b141466d4ed27d59cef98043a34a31942d30650ddce58cf2358c201efff577ec"
+      },
+      "constructors": {
+        "rows": 212,
+        "content_sha256": "221360218629abaa24b8c2a62eae9df5a6891bfa08f0bf5bd6f34032468b264d"
+      },
+      "driver_standings": {
+        "rows": 34863,
+        "content_sha256": "7704c147b4da0d35b69d70390a44cae23c200a7675246a51af6ff3baae96dd27"
+      },
+      "drivers": {
+        "rows": 861,
+        "content_sha256": "83804487003b4614fcbcc724f1288fd3bd01873ae34f72495b2e1d06ed8ae441"
+      },
+      "lap_times": {
+        "rows": 589081,
+        "content_sha256": "f9e0a79026c4cc9b439d834193c6483a78e5d09bf96d4ad7b51b8784344eacc9"
+      },
+      "pit_stops": {
+        "rows": 11371,
+        "content_sha256": "ffee8d15c1183bf0c0273063954875325ac8b24f3c76dfa7609c90ab5acff22e"
+      },
+      "qualifying": {
+        "rows": 10494,
+        "content_sha256": "83a6a23e5fff9b9b9c46341f3c5be1e2d1d1b47303f90b903df779b80aab5e84"
+      },
+      "races": {
+        "rows": 1125,
+        "content_sha256": "05616e70b1eb082104ba2e7418fe2475eef28e65e9d6a314f5843dfe3d6b1707"
+      },
+      "results": {
+        "rows": 26759,
+        "content_sha256": "e03d4805c69683851e17253eee9eb67bc7ff9094a556a096d05064263ff8c8e5"
+      },
+      "seasons": {
+        "rows": 75,
+        "content_sha256": "f8ff6bce905892f4d6fd0b633894e502f4d6caf4431caeb4bbe84ecf824754a4"
+      },
+      "sprint_results": {
+        "rows": 360,
+        "content_sha256": "2a9592dac5c9f2f279b83cdcaf3e7024725e82d46a4d12a567a2f1dd07cfac54"
+      },
+      "status": {
+        "rows": 139,
+        "content_sha256": "77b29bb62652ce94b2d51578be06ddc81e7f7188bde149eb12ed1b7002133a07"
+      }
+    },
+    "excluded_tables": [
+      "conversations",
+      "messages"
+    ],
+    "database_engine": "MySQL 8.4, isolated localhost container",
+    "query_account": "SELECT-only f1_eval_reader",
+    "query_timeout_ms": 15000,
+    "race_year_range": [
+      1950,
+      2024
+    ],
+    "grants": [
+      "GRANT USAGE ON *.* TO `f1_eval_reader`@`%`",
+      "GRANT SELECT ON `f1db`.* TO `f1_eval_reader`@`%`"
+    ]
+  },
+  "suite_sha256": "0d663c9ef00870fa98ec63ad62df734eb02a9b34b2ab4afa300c90e39af99a78",
+  "code_sha256": "f8d3654a6982cab5c46cf22c30989125a646970d9a1373464916fd228a609c32",
+  "cases": [
+    {
+      "id": "D01",
+      "split": "dev",
+      "question": "How many races were held in 2023? Return only the count.",
+      "reference_sql": "SELECT COUNT(*) AS n FROM races WHERE year=2023",
+      "required_tables": [
+        "races"
+      ],
+      "category": "count",
+      "ordered": false,
+      "expected_result": {
+        "id": "D01",
+        "columns": [
+          "n"
+        ],
+        "rows": [
+          {
+            "n": 22
+          }
+        ],
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": [
+          0
+        ]
+      },
+      "first_attempt_correct": false,
+      "final_correct": true,
+      "retries": 1,
+      "elapsed_s": 11.8512441999992,
+      "response": {
+        "answer": "22",
+        "sql": "SELECT COUNT(*) FROM races WHERE year = 2023 LIMIT 50",
+        "results": {
+          "columns": [
+            "COUNT(*)"
+          ],
+          "rows": [
+            {
+              "COUNT(*)": 22
+            }
+          ],
+          "row_count": 1,
+          "row_limit": 50
+        },
+        "execution_time": 11.85,
+        "follow_ups": [
+          "Which driver won the most races in 2023?",
+          "How does the 2023 race count compare to the 2022 season?",
+          "What is the total number of podium finishes for the top three drivers in 2023?"
+        ],
+        "agent_steps": [
+          {
+            "node": "classify",
+            "action": "Classified user intent",
+            "result": "📊 Database query"
+          },
+          {
+            "node": "retrieve_schema",
+            "action": "RAG search for relevant tables",
+            "result": "Found schema context (3259 chars)"
+          },
+          {
+            "node": "generate_sql",
+            "action": "LLM generated SQL",
+            "result": "SELECT COUNT(*) FROM races WHERE year = 2023;",
+            "safe": true,
+            "sql": "SELECT COUNT(*) FROM races WHERE year = 2023;",
+            "attempt": 1,
+            "raw_response": "SELECT COUNT(*) FROM races WHERE year = 2023;"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 1,
+            "sql": "SELECT __f1_probe_missing_column__, COUNT(*) FROM races WHERE year = 2023",
+            "execution_result": {
+              "success": false,
+              "columns": [],
+              "rows": [],
+              "row_count": 0,
+              "error": "1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'",
+              "executed_sql": "SELECT __f1_probe_missing_column__, COUNT(*) FROM races WHERE year = 2023",
+              "controlled_fault": "injected nonexistent projection column on first execution only"
+            },
+            "action": "Executed SQL",
+            "result": "❌ 0 rows | Error: 1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "⚠️ Issues: [\"1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'\"]"
+          },
+          {
+            "node": "retry_sql",
+            "attempt": 2,
+            "sql": "SELECT COUNT(*) FROM races WHERE year = 2023;",
+            "raw_response": "SELECT COUNT(*) FROM races WHERE year = 2023;",
+            "action": "Retry attempt #2",
+            "result": "SELECT COUNT(*) FROM races WHERE year = 2023;"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 2,
+            "sql": "SELECT COUNT(*) FROM races WHERE year = 2023 LIMIT 50",
+            "execution_result": {
+              "success": true,
+              "columns": [
+                "COUNT(*)"
+              ],
+              "rows": [
+                {
+                  "COUNT(*)": 22
+                }
+              ],
+              "row_count": 1,
+              "error": null,
+              "executed_sql": "SELECT COUNT(*) FROM races WHERE year = 2023 LIMIT 50",
+              "row_limit": 50,
+              "numeric_columns": [
+                0
+              ],
+              "integer_columns": [
+                0
+              ]
+            },
+            "action": "Executed SQL",
+            "result": "✅ 1 rows"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "✅ Results look good"
+          },
+          {
+            "node": "generate_answer",
+            "action": "Generated natural language answer",
+            "result": "22"
+          }
+        ],
+        "rag_metrics": {
+          "relevance_source": "generated_sql_table_proxy",
+          "answer_check_type": "result_value_substring_coverage",
+          "reciprocal_rank": 1.0,
+          "mrr": 1.0,
+          "recall_at_k": 1.0,
+          "k": 10,
+          "context_relevance": 0.1,
+          "faithfulness_score": 1.0,
+          "faithfulness_matched": 1,
+          "faithfulness_total": 1,
+          "retrieved_tables": [
+            "races",
+            "results",
+            "qualifying",
+            "driver_standings",
+            "constructor_results",
+            "pit_stops",
+            "sprint_results",
+            "drivers",
+            "circuits",
+            "constructors"
+          ],
+          "tables_used_in_sql": [
+            "races"
+          ],
+          "tables_found_in_retrieval": [
+            "races"
+          ]
+        },
+        "error": null
+      },
+      "retrieval": {
+        "plain_dense": {
+          "reciprocal_rank": 0.2,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.14285714285714285,
+          "all_required_tables_found": true
+        },
+        "enriched_dense": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.14285714285714285,
+          "all_required_tables_found": true
+        },
+        "enriched_augmented": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.1,
+          "all_required_tables_found": true
+        }
+      },
+      "model_calls": [
+        {
+          "elapsed_s": 0.8100287999986904,
+          "quota_wait_s": 0,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 50,
+            "prompt_tokens": 234,
+            "total_tokens": 284,
+            "completion_time": 0.104153219,
+            "completion_tokens_details": {
+              "reasoning_tokens": 40
+            },
+            "prompt_time": 0.016107846,
+            "prompt_tokens_details": null,
+            "queue_time": 0.348218856,
+            "total_time": 0.120261065
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_fe269835c7",
+          "response": "DATABASE"
+        },
+        {
+          "elapsed_s": 0.8641669999997248,
+          "quota_wait_s": 0,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 61,
+            "prompt_tokens": 1520,
+            "total_tokens": 1581,
+            "completion_time": 0.130961852,
+            "completion_tokens_details": {
+              "reasoning_tokens": 40
+            },
+            "prompt_time": 0.174914977,
+            "prompt_tokens_details": null,
+            "queue_time": 0.350044095,
+            "total_time": 0.305876829
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_1d982b31b2",
+          "response": "SELECT COUNT(*) FROM races WHERE year = 2023;"
+        },
+        {
+          "elapsed_s": 0.741605699997308,
+          "quota_wait_s": 0,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 69,
+            "prompt_tokens": 1584,
+            "total_tokens": 1653,
+            "completion_time": 0.144147239,
+            "completion_tokens_details": {
+              "reasoning_tokens": 48
+            },
+            "prompt_time": 0.067696542,
+            "prompt_tokens_details": null,
+            "queue_time": 0.333958102,
+            "total_time": 0.211843781
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_77b12279f9",
+          "response": "SELECT COUNT(*) FROM races WHERE year = 2023;"
+        },
+        {
+          "elapsed_s": 0.5159043999992718,
+          "quota_wait_s": 0,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 50,
+            "prompt_tokens": 229,
+            "total_tokens": 279,
+            "completion_time": 0.10412232,
+            "completion_tokens_details": {
+              "reasoning_tokens": 40
+            },
+            "prompt_time": 0.014408623,
+            "prompt_tokens_details": null,
+            "queue_time": 0.31759587,
+            "total_time": 0.118530943
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_49bfac06f1",
+          "response": "22"
+        },
+        {
+          "elapsed_s": 8.822659499997826,
+          "quota_wait_s": 7.906499999996742,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 165,
+            "prompt_tokens": 160,
+            "total_tokens": 325,
+            "completion_time": 0.347273579,
+            "completion_tokens_details": {
+              "reasoning_tokens": 109
+            },
+            "prompt_time": 0.008016032,
+            "prompt_tokens_details": null,
+            "queue_time": 0.213028436,
+            "total_time": 0.355289611
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_a655021f7d",
+          "response": "Which driver won the most races in 2023?  \nHow does the 2023 race count compare to the 2022 season?  \nWhat is the total number of podium finishes for the top three drivers in 2023?"
+        }
+      ],
+      "retrieval_ranks": {
+        "plain_dense": [
+          "qualifying",
+          "driver_standings",
+          "sprint_results",
+          "pit_stops",
+          "races",
+          "constructor_results",
+          "constructor_standings"
+        ],
+        "enriched_dense": [
+          "races",
+          "results",
+          "qualifying",
+          "driver_standings",
+          "constructor_results",
+          "pit_stops",
+          "sprint_results"
+        ],
+        "enriched_augmented": [
+          "races",
+          "results",
+          "qualifying",
+          "driver_standings",
+          "constructor_results",
+          "pit_stops",
+          "sprint_results",
+          "drivers",
+          "circuits",
+          "constructors"
+        ]
+      }
+    },
+    {
+      "id": "D02",
+      "split": "dev",
+      "question": "Return the surnames and career race-win counts of the top five drivers, ordered by wins descending then surname ascending.",
+      "reference_sql": "SELECT d.surname,COUNT(*) n FROM results r JOIN drivers d USING(driverId) WHERE r.position='1' GROUP BY d.driverId,d.surname ORDER BY n DESC,d.surname LIMIT 5",
+      "required_tables": [
+        "results",
+        "drivers"
+      ],
+      "category": "aggregation",
+      "ordered": true,
+      "expected_result": {
+        "id": "D02",
+        "columns": [
+          "surname",
+          "n"
+        ],
+        "rows": [
+          {
+            "surname": "Hamilton",
+            "n": 105
+          },
+          {
+            "surname": "Schumacher",
+            "n": 91
+          },
+          {
+            "surname": "Verstappen",
+            "n": 63
+          },
+          {
+            "surname": "Vettel",
+            "n": 53
+          },
+          {
+            "surname": "Prost",
+            "n": 51
+          }
+        ],
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": [
+          1
+        ]
+      },
+      "first_attempt_correct": false,
+      "final_correct": true,
+      "retries": 1,
+      "elapsed_s": 70.59675179999977,
+      "response": {
+        "answer": "- Hamilton – 105  \n- Schumacher – 91  \n- Verstappen – 63  \n- Vettel – 53  \n- Prost – 51",
+        "sql": "SELECT d.surname, COUNT(*) AS win_count FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId WHERE r.position = '1' GROUP BY d.driverId, d.surname ORDER BY win_count DESC, d.surname ASC LIMIT 5",
+        "results": {
+          "columns": [
+            "surname",
+            "win_count"
+          ],
+          "rows": [
+            {
+              "surname": "Hamilton",
+              "win_count": 105
+            },
+            {
+              "surname": "Schumacher",
+              "win_count": 91
+            },
+            {
+              "surname": "Verstappen",
+              "win_count": 63
+            },
+            {
+              "surname": "Vettel",
+              "win_count": 53
+            },
+            {
+              "surname": "Prost",
+              "win_count": 51
+            }
+          ],
+          "row_count": 5,
+          "row_limit": 50
+        },
+        "execution_time": 70.6,
+        "follow_ups": [
+          "What is the total number of wins for these top five drivers combined?",
+          "Which of these drivers has the highest win‑to‑race‑entry percentage?",
+          "How many wins did each of these drivers achieve during the 2010s?"
+        ],
+        "agent_steps": [
+          {
+            "node": "classify",
+            "action": "Classified user intent",
+            "result": "📊 Database query"
+          },
+          {
+            "node": "retrieve_schema",
+            "action": "RAG search for relevant tables",
+            "result": "Found schema context (2604 chars)"
+          },
+          {
+            "node": "generate_sql",
+            "action": "LLM generated SQL",
+            "result": "SELECT d.surname, COUNT(*) AS win_count\nFROM results r\nJOIN drivers d ON r.driverId = d.driverId\nWHE...",
+            "safe": true,
+            "sql": "SELECT d.surname, COUNT(*) AS win_count\nFROM results r\nJOIN drivers d ON r.driverId = d.driverId\nWHERE r.position = '1'\nGROUP BY d.driverId, d.surname\nORDER BY win_count DESC, d.surname ASC\nLIMIT 5;",
+            "attempt": 1,
+            "raw_response": "SELECT d.surname, COUNT(*) AS win_count\nFROM results r\nJOIN drivers d ON r.driverId = d.driverId\nWHERE r.position = '1'\nGROUP BY d.driverId, d.surname\nORDER BY win_count DESC, d.surname ASC\nLIMIT 5;"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 1,
+            "sql": "SELECT __f1_probe_missing_column__, d.surname, COUNT(*) AS win_count FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId WHERE r.position = '1' GROUP BY d.driverId, d.surname ORDER BY win_count DESC, d.surname ASC LIMIT 5",
+            "execution_result": {
+              "success": false,
+              "columns": [],
+              "rows": [],
+              "row_count": 0,
+              "error": "1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'",
+              "executed_sql": "SELECT __f1_probe_missing_column__, d.surname, COUNT(*) AS win_count FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId WHERE r.position = '1' GROUP BY d.driverId, d.surname ORDER BY win_count DESC, d.surname ASC LIMIT 5",
+              "controlled_fault": "injected nonexistent projection column on first execution only"
+            },
+            "action": "Executed SQL",
+            "result": "❌ 0 rows | Error: 1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "⚠️ Issues: [\"1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'\"]"
+          },
+          {
+            "node": "retry_sql",
+            "attempt": 2,
+            "sql": "SELECT d.surname, COUNT(*) AS win_count\nFROM results r\nJOIN drivers d ON r.driverId = d.driverId\nWHERE r.position = '1'\nGROUP BY d.driverId, d.surname\nORDER BY win_count DESC, d.surname ASC\nLIMIT 5;",
+            "raw_response": "SELECT d.surname, COUNT(*) AS win_count\nFROM results r\nJOIN drivers d ON r.driverId = d.driverId\nWHERE r.position = '1'\nGROUP BY d.driverId, d.surname\nORDER BY win_count DESC, d.surname ASC\nLIMIT 5;",
+            "action": "Retry attempt #2",
+            "result": "SELECT d.surname, COUNT(*) AS win_count\nFROM results r\nJOIN drivers d ON r.driverId = d.driverId\nWHE"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 2,
+            "sql": "SELECT d.surname, COUNT(*) AS win_count FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId WHERE r.position = '1' GROUP BY d.driverId, d.surname ORDER BY win_count DESC, d.surname ASC LIMIT 5",
+            "execution_result": {
+              "success": true,
+              "columns": [
+                "surname",
+                "win_count"
+              ],
+              "rows": [
+                {
+                  "surname": "Hamilton",
+                  "win_count": 105
+                },
+                {
+                  "surname": "Schumacher",
+                  "win_count": 91
+                },
+                {
+                  "surname": "Verstappen",
+                  "win_count": 63
+                },
+                {
+                  "surname": "Vettel",
+                  "win_count": 53
+                },
+                {
+                  "surname": "Prost",
+                  "win_count": 51
+                }
+              ],
+              "row_count": 5,
+              "error": null,
+              "executed_sql": "SELECT d.surname, COUNT(*) AS win_count FROM results AS r JOIN drivers AS d ON r.driverId = d.driverId WHERE r.position = '1' GROUP BY d.driverId, d.surname ORDER BY win_count DESC, d.surname ASC LIMIT 5",
+              "row_limit": 50,
+              "numeric_columns": [
+                1
+              ],
+              "integer_columns": [
+                1
+              ]
+            },
+            "action": "Executed SQL",
+            "result": "✅ 5 rows"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "✅ Results look good"
+          },
+          {
+            "node": "generate_answer",
+            "action": "Generated natural language answer",
+            "result": "- Hamilton – 105  \n- Schumacher – 91  \n- Verstappen – 63  \n- Vettel – 53  \n- Pro..."
+          }
+        ],
+        "rag_metrics": {
+          "relevance_source": "generated_sql_table_proxy",
+          "answer_check_type": "result_value_substring_coverage",
+          "reciprocal_rank": 1.0,
+          "mrr": 1.0,
+          "recall_at_k": 1.0,
+          "k": 8,
+          "context_relevance": 0.25,
+          "faithfulness_score": 1.0,
+          "faithfulness_matched": 10,
+          "faithfulness_total": 10,
+          "retrieved_tables": [
+            "drivers",
+            "results",
+            "driver_standings",
+            "qualifying",
+            "races",
+            "lap_times",
+            "pit_stops",
+            "circuits"
+          ],
+          "tables_used_in_sql": [
+            "results",
+            "drivers"
+          ],
+          "tables_found_in_retrieval": [
+            "results",
+            "drivers"
+          ]
+        },
+        "error": null
+      },
+      "retrieval": {
+        "plain_dense": {
+          "reciprocal_rank": 0.3333333333333333,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.2857142857142857,
+          "all_required_tables_found": true
+        },
+        "enriched_dense": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.2857142857142857,
+          "all_required_tables_found": true
+        },
+        "enriched_augmented": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.25,
+          "all_required_tables_found": true
+        }
+      },
+      "model_calls": [
+        {
+          "elapsed_s": 9.059789299997647,
+          "quota_wait_s": 8.3470000000023,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 52,
+            "prompt_tokens": 242,
+            "total_tokens": 294,
+            "completion_time": 0.111002562,
+            "completion_tokens_details": {
+              "reasoning_tokens": 42
+            },
+            "prompt_time": 0.027099579,
+            "prompt_tokens_details": null,
+            "queue_time": 0.312656356,
+            "total_time": 0.138102141
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_f73454f048",
+          "response": "DATABASE"
+        },
+        {
+          "elapsed_s": 20.384370100000524,
+          "quota_wait_s": 19.48400000000038,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 204,
+            "prompt_tokens": 1363,
+            "total_tokens": 1567,
+            "completion_time": 0.437587861,
+            "completion_tokens_details": {
+              "reasoning_tokens": 136
+            },
+            "prompt_time": 0.0050782,
+            "prompt_tokens_details": {
+              "cached_tokens": 1280
+            },
+            "queue_time": 0.212871098,
+            "total_time": 0.442666061
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_4a7bb72c24",
+          "response": "SELECT d.surname, COUNT(*) AS win_count\nFROM results r\nJOIN drivers d ON r.driverId = d.driverId\nWHERE r.position = '1'\nGROUP BY d.driverId, d.surname\nORDER BY win_count DESC, d.surname ASC\nLIMIT 5;"
+        },
+        {
+          "elapsed_s": 22.037215899999865,
+          "quota_wait_s": 20.397999999997705,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 232,
+            "prompt_tokens": 1471,
+            "total_tokens": 1703,
+            "completion_time": 0.604299329,
+            "completion_tokens_details": {
+              "reasoning_tokens": 164
+            },
+            "prompt_time": 0.39414851,
+            "prompt_tokens_details": {
+              "cached_tokens": 256
+            },
+            "queue_time": 0.311826768,
+            "total_time": 0.998447839
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_5082008e34",
+          "response": "SELECT d.surname, COUNT(*) AS win_count\nFROM results r\nJOIN drivers d ON r.driverId = d.driverId\nWHERE r.position = '1'\nGROUP BY d.driverId, d.surname\nORDER BY win_count DESC, d.surname ASC\nLIMIT 5;"
+        },
+        {
+          "elapsed_s": 9.510295600000973,
+          "quota_wait_s": 8.59300000000134,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 134,
+            "prompt_tokens": 345,
+            "total_tokens": 479,
+            "completion_time": 0.28127392,
+            "completion_tokens_details": {
+              "reasoning_tokens": 95
+            },
+            "prompt_time": 0.095325705,
+            "prompt_tokens_details": null,
+            "queue_time": 0.312994561,
+            "total_time": 0.376599625
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_df9620fe21",
+          "response": "- Hamilton – 105  \n- Schumacher – 91  \n- Verstappen – 63  \n- Vettel – 53  \n- Prost – 51"
+        },
+        {
+          "elapsed_s": 9.485841399997298,
+          "quota_wait_s": 7.890500000001338,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 157,
+            "prompt_tokens": 196,
+            "total_tokens": 353,
+            "completion_time": 0.326247121,
+            "completion_tokens_details": {
+              "reasoning_tokens": 100
+            },
+            "prompt_time": 0.02483013,
+            "prompt_tokens_details": null,
+            "queue_time": 0.39667784,
+            "total_time": 0.351077251
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_e5b4e54fbb",
+          "response": "What is the total number of wins for these top five drivers combined?  \nWhich of these drivers has the highest win‑to‑race‑entry percentage?  \nHow many wins did each of these drivers achieve during the 2010s?"
+        }
+      ],
+      "retrieval_ranks": {
+        "plain_dense": [
+          "driver_standings",
+          "qualifying",
+          "drivers",
+          "pit_stops",
+          "lap_times",
+          "sprint_results",
+          "results"
+        ],
+        "enriched_dense": [
+          "drivers",
+          "results",
+          "driver_standings",
+          "qualifying",
+          "races",
+          "lap_times",
+          "pit_stops"
+        ],
+        "enriched_augmented": [
+          "drivers",
+          "results",
+          "driver_standings",
+          "qualifying",
+          "races",
+          "lap_times",
+          "pit_stops",
+          "circuits"
+        ]
+      }
+    },
+    {
+      "id": "D03",
+      "split": "dev",
+      "question": "List circuit names in Italy, sorted alphabetically.",
+      "reference_sql": "SELECT name FROM circuits WHERE country='Italy' ORDER BY name",
+      "required_tables": [
+        "circuits"
+      ],
+      "category": "filter",
+      "ordered": true,
+      "expected_result": {
+        "id": "D03",
+        "columns": [
+          "name"
+        ],
+        "rows": [
+          {
+            "name": "Autodromo Enzo e Dino Ferrari"
+          },
+          {
+            "name": "Autodromo Internazionale del Mugello"
+          },
+          {
+            "name": "Autodromo Nazionale di Monza"
+          },
+          {
+            "name": "Pescara Circuit"
+          }
+        ],
+        "numeric_columns": [],
+        "integer_columns": []
+      },
+      "first_attempt_correct": false,
+      "final_correct": true,
+      "retries": 1,
+      "elapsed_s": 65.80457139999999,
+      "response": {
+        "answer": "- Autodromo Enzo e Dino Ferrari  \n- Autodromo Internazionale del Mugello  \n- Autodromo Nazionale di Monza  \n- Pescara Circuit",
+        "sql": "SELECT name FROM circuits WHERE country = 'Italy' ORDER BY name ASC LIMIT 50",
+        "results": {
+          "columns": [
+            "name"
+          ],
+          "rows": [
+            {
+              "name": "Autodromo Enzo e Dino Ferrari"
+            },
+            {
+              "name": "Autodromo Internazionale del Mugello"
+            },
+            {
+              "name": "Autodromo Nazionale di Monza"
+            },
+            {
+              "name": "Pescara Circuit"
+            }
+          ],
+          "row_count": 4,
+          "row_limit": 50
+        },
+        "execution_time": 65.8,
+        "follow_ups": [
+          "Which of these Italian circuits have hosted a Grand Prix in the past five years?",
+          "How many laps are typically run at each of these circuits?",
+          "What is the average track length (in km) of the listed Italian circuits?"
+        ],
+        "agent_steps": [
+          {
+            "node": "classify",
+            "action": "Classified user intent",
+            "result": "📊 Database query"
+          },
+          {
+            "node": "retrieve_schema",
+            "action": "RAG search for relevant tables",
+            "result": "Found schema context (2180 chars)"
+          },
+          {
+            "node": "generate_sql",
+            "action": "LLM generated SQL",
+            "result": "SELECT name\nFROM circuits\nWHERE country = 'Italy'\nORDER BY name ASC;",
+            "safe": true,
+            "sql": "SELECT name\nFROM circuits\nWHERE country = 'Italy'\nORDER BY name ASC;",
+            "attempt": 1,
+            "raw_response": "SELECT name\nFROM circuits\nWHERE country = 'Italy'\nORDER BY name ASC;"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 1,
+            "sql": "SELECT __f1_probe_missing_column__, name FROM circuits WHERE country = 'Italy' ORDER BY name ASC",
+            "execution_result": {
+              "success": false,
+              "columns": [],
+              "rows": [],
+              "row_count": 0,
+              "error": "1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'",
+              "executed_sql": "SELECT __f1_probe_missing_column__, name FROM circuits WHERE country = 'Italy' ORDER BY name ASC",
+              "controlled_fault": "injected nonexistent projection column on first execution only"
+            },
+            "action": "Executed SQL",
+            "result": "❌ 0 rows | Error: 1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "⚠️ Issues: [\"1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'\"]"
+          },
+          {
+            "node": "retry_sql",
+            "attempt": 2,
+            "sql": "SELECT name\nFROM circuits\nWHERE country = 'Italy'\nORDER BY name ASC;",
+            "raw_response": "SELECT name\nFROM circuits\nWHERE country = 'Italy'\nORDER BY name ASC;",
+            "action": "Retry attempt #2",
+            "result": "SELECT name\nFROM circuits\nWHERE country = 'Italy'\nORDER BY name ASC;"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 2,
+            "sql": "SELECT name FROM circuits WHERE country = 'Italy' ORDER BY name ASC LIMIT 50",
+            "execution_result": {
+              "success": true,
+              "columns": [
+                "name"
+              ],
+              "rows": [
+                {
+                  "name": "Autodromo Enzo e Dino Ferrari"
+                },
+                {
+                  "name": "Autodromo Internazionale del Mugello"
+                },
+                {
+                  "name": "Autodromo Nazionale di Monza"
+                },
+                {
+                  "name": "Pescara Circuit"
+                }
+              ],
+              "row_count": 4,
+              "error": null,
+              "executed_sql": "SELECT name FROM circuits WHERE country = 'Italy' ORDER BY name ASC LIMIT 50",
+              "row_limit": 50,
+              "numeric_columns": [],
+              "integer_columns": []
+            },
+            "action": "Executed SQL",
+            "result": "✅ 4 rows"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "✅ Results look good"
+          },
+          {
+            "node": "generate_answer",
+            "action": "Generated natural language answer",
+            "result": "- Autodromo Enzo e Dino Ferrari  \n- Autodromo Internazionale del Mugello  \n- Aut..."
+          }
+        ],
+        "rag_metrics": {
+          "relevance_source": "generated_sql_table_proxy",
+          "answer_check_type": "result_value_substring_coverage",
+          "reciprocal_rank": 1.0,
+          "mrr": 1.0,
+          "recall_at_k": 1.0,
+          "k": 7,
+          "context_relevance": 0.1429,
+          "faithfulness_score": 1.0,
+          "faithfulness_matched": 4,
+          "faithfulness_total": 4,
+          "retrieved_tables": [
+            "circuits",
+            "constructors",
+            "races",
+            "drivers",
+            "qualifying",
+            "seasons",
+            "results"
+          ],
+          "tables_used_in_sql": [
+            "circuits"
+          ],
+          "tables_found_in_retrieval": [
+            "circuits"
+          ]
+        },
+        "error": null
+      },
+      "retrieval": {
+        "plain_dense": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.14285714285714285,
+          "all_required_tables_found": true
+        },
+        "enriched_dense": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.14285714285714285,
+          "all_required_tables_found": true
+        },
+        "enriched_augmented": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.14285714285714285,
+          "all_required_tables_found": true
+        }
+      },
+      "model_calls": [
+        {
+          "elapsed_s": 8.239680099999532,
+          "quota_wait_s": 7.465499999997117,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 45,
+            "prompt_tokens": 229,
+            "total_tokens": 274,
+            "completion_time": 0.099924589,
+            "completion_tokens_details": {
+              "reasoning_tokens": 35
+            },
+            "prompt_time": 0.009676799,
+            "prompt_tokens_details": null,
+            "queue_time": 0.316556731,
+            "total_time": 0.109601388
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_87b3c396db",
+          "response": "DATABASE"
+        },
+        {
+          "elapsed_s": 19.079361699998117,
+          "quota_wait_s": 18.19949999999808,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 95,
+            "prompt_tokens": 1220,
+            "total_tokens": 1315,
+            "completion_time": 0.197419654,
+            "completion_tokens_details": {
+              "reasoning_tokens": 69
+            },
+            "prompt_time": 0.050438446,
+            "prompt_tokens_details": null,
+            "queue_time": 0.311514136,
+            "total_time": 0.2478581
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_f73454f048",
+          "response": "SELECT name\nFROM circuits\nWHERE country = 'Italy'\nORDER BY name ASC;"
+        },
+        {
+          "elapsed_s": 21.564133500000025,
+          "quota_wait_s": 18.836500000000957,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 84,
+            "prompt_tokens": 1287,
+            "total_tokens": 1371,
+            "completion_time": 0.177417486,
+            "completion_tokens_details": {
+              "reasoning_tokens": 58
+            },
+            "prompt_time": 1.750036437,
+            "prompt_tokens_details": {
+              "cached_tokens": 256
+            },
+            "queue_time": 0.333715547,
+            "total_time": 1.9274539229999998
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_77b12279f9",
+          "response": "SELECT name\nFROM circuits\nWHERE country = 'Italy'\nORDER BY name ASC;"
+        },
+        {
+          "elapsed_s": 7.761125799999718,
+          "quota_wait_s": 6.918500000003259,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 120,
+            "prompt_tokens": 271,
+            "total_tokens": 391,
+            "completion_time": 0.248258794,
+            "completion_tokens_details": {
+              "reasoning_tokens": 76
+            },
+            "prompt_time": 0.013052474,
+            "prompt_tokens_details": null,
+            "queue_time": 0.316286677,
+            "total_time": 0.261311268
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_87b3c396db",
+          "response": "- Autodromo Enzo e Dino Ferrari  \n- Autodromo Internazionale del Mugello  \n- Autodromo Nazionale di Monza  \n- Pescara Circuit"
+        },
+        {
+          "elapsed_s": 9.062861899998097,
+          "quota_wait_s": 7.885999999999041,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 155,
+            "prompt_tokens": 188,
+            "total_tokens": 343,
+            "completion_time": 0.323198764,
+            "completion_tokens_details": {
+              "reasoning_tokens": 100
+            },
+            "prompt_time": 0.056202152,
+            "prompt_tokens_details": null,
+            "queue_time": 0.348646244,
+            "total_time": 0.379400916
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_dee443f41b",
+          "response": "Which of these Italian circuits have hosted a Grand Prix in the past five years?  \nHow many laps are typically run at each of these circuits?  \nWhat is the average track length (in km) of the listed Italian circuits?"
+        }
+      ],
+      "retrieval_ranks": {
+        "plain_dense": [
+          "circuits",
+          "races",
+          "constructors",
+          "qualifying",
+          "drivers",
+          "driver_standings",
+          "constructor_standings"
+        ],
+        "enriched_dense": [
+          "circuits",
+          "constructors",
+          "races",
+          "drivers",
+          "qualifying",
+          "seasons",
+          "results"
+        ],
+        "enriched_augmented": [
+          "circuits",
+          "constructors",
+          "races",
+          "drivers",
+          "qualifying",
+          "seasons",
+          "results"
+        ]
+      }
+    },
+    {
+      "id": "D04",
+      "split": "dev",
+      "question": "How many race-result points did Ferrari score in 2022, excluding sprint points? Return only the total.",
+      "reference_sql": "SELECT SUM(r.points) FROM results r JOIN constructors c USING(constructorId) JOIN races ra USING(raceId) WHERE c.name='Ferrari' AND ra.year=2022",
+      "required_tables": [
+        "results",
+        "constructors",
+        "races"
+      ],
+      "category": "aggregation",
+      "ordered": false,
+      "expected_result": {
+        "id": "D04",
+        "columns": [
+          "SUM(r.points)"
+        ],
+        "rows": [
+          {
+            "SUM(r.points)": 519.0
+          }
+        ],
+        "numeric_columns": [
+          0
+        ],
+        "integer_columns": []
+      },
+      "first_attempt_correct": false,
+      "final_correct": true,
+      "retries": 1,
+      "elapsed_s": 70.69436349999887,
+      "response": {
+        "answer": "519",
+        "sql": "SELECT SUM(r.points) FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN constructors AS c ON r.constructorId = c.constructorId WHERE ra.year = 2022 AND c.name = 'Ferrari' LIMIT 50",
+        "results": {
+          "columns": [
+            "SUM(r.points)"
+          ],
+          "rows": [
+            {
+              "SUM(r.points)": 519.0
+            }
+          ],
+          "row_count": 1,
+          "row_limit": 50
+        },
+        "execution_time": 70.69,
+        "follow_ups": [
+          "What was Ferrari's total points in 2022 including sprint points?",
+          "How many race wins did Ferrari achieve in the 2022 season?",
+          "Which Ferrari driver scored the highest number of points in 2022?"
+        ],
+        "agent_steps": [
+          {
+            "node": "classify",
+            "action": "Classified user intent",
+            "result": "📊 Database query"
+          },
+          {
+            "node": "retrieve_schema",
+            "action": "RAG search for relevant tables",
+            "result": "Found schema context (3017 chars)"
+          },
+          {
+            "node": "generate_sql",
+            "action": "LLM generated SQL",
+            "result": "SELECT SUM(r.points) AS total_points\nFROM results r\nJOIN races ra ON r.raceId = ra.raceId\nJOIN const...",
+            "safe": true,
+            "sql": "SELECT SUM(r.points) AS total_points\nFROM results r\nJOIN races ra ON r.raceId = ra.raceId\nJOIN constructors c ON r.constructorId = c.constructorId\nWHERE ra.year = 2022\n  AND c.name = 'Ferrari';",
+            "attempt": 1,
+            "raw_response": "SELECT SUM(r.points) AS total_points\nFROM results r\nJOIN races ra ON r.raceId = ra.raceId\nJOIN constructors c ON r.constructorId = c.constructorId\nWHERE ra.year = 2022\n  AND c.name = 'Ferrari';"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 1,
+            "sql": "SELECT __f1_probe_missing_column__, SUM(r.points) AS total_points FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN constructors AS c ON r.constructorId = c.constructorId WHERE ra.year = 2022 AND c.name = 'Ferrari'",
+            "execution_result": {
+              "success": false,
+              "columns": [],
+              "rows": [],
+              "row_count": 0,
+              "error": "1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'",
+              "executed_sql": "SELECT __f1_probe_missing_column__, SUM(r.points) AS total_points FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN constructors AS c ON r.constructorId = c.constructorId WHERE ra.year = 2022 AND c.name = 'Ferrari'",
+              "controlled_fault": "injected nonexistent projection column on first execution only"
+            },
+            "action": "Executed SQL",
+            "result": "❌ 0 rows | Error: 1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "⚠️ Issues: [\"1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'\"]"
+          },
+          {
+            "node": "retry_sql",
+            "attempt": 2,
+            "sql": "SELECT SUM(r.points) \nFROM results AS r\nJOIN races AS ra ON r.raceId = ra.raceId\nJOIN constructors AS c ON r.constructorId = c.constructorId\nWHERE ra.year = 2022\n  AND c.name = 'Ferrari';",
+            "raw_response": "SELECT SUM(r.points) \nFROM results AS r\nJOIN races AS ra ON r.raceId = ra.raceId\nJOIN constructors AS c ON r.constructorId = c.constructorId\nWHERE ra.year = 2022\n  AND c.name = 'Ferrari';",
+            "action": "Retry attempt #2",
+            "result": "SELECT SUM(r.points) \nFROM results AS r\nJOIN races AS ra ON r.raceId = ra.raceId\nJOIN constructors A"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 2,
+            "sql": "SELECT SUM(r.points) FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN constructors AS c ON r.constructorId = c.constructorId WHERE ra.year = 2022 AND c.name = 'Ferrari' LIMIT 50",
+            "execution_result": {
+              "success": true,
+              "columns": [
+                "SUM(r.points)"
+              ],
+              "rows": [
+                {
+                  "SUM(r.points)": 519.0
+                }
+              ],
+              "row_count": 1,
+              "error": null,
+              "executed_sql": "SELECT SUM(r.points) FROM results AS r JOIN races AS ra ON r.raceId = ra.raceId JOIN constructors AS c ON r.constructorId = c.constructorId WHERE ra.year = 2022 AND c.name = 'Ferrari' LIMIT 50",
+              "row_limit": 50,
+              "numeric_columns": [
+                0
+              ],
+              "integer_columns": []
+            },
+            "action": "Executed SQL",
+            "result": "✅ 1 rows"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "✅ Results look good"
+          },
+          {
+            "node": "generate_answer",
+            "action": "Generated natural language answer",
+            "result": "519"
+          }
+        ],
+        "rag_metrics": {
+          "relevance_source": "generated_sql_table_proxy",
+          "answer_check_type": "result_value_substring_coverage",
+          "reciprocal_rank": 1.0,
+          "mrr": 1.0,
+          "recall_at_k": 1.0,
+          "k": 9,
+          "context_relevance": 0.3333,
+          "faithfulness_score": 0.0,
+          "faithfulness_matched": 0,
+          "faithfulness_total": 1,
+          "retrieved_tables": [
+            "results",
+            "driver_standings",
+            "sprint_results",
+            "qualifying",
+            "constructor_results",
+            "races",
+            "drivers",
+            "constructors",
+            "circuits"
+          ],
+          "tables_used_in_sql": [
+            "results",
+            "races",
+            "constructors"
+          ],
+          "tables_found_in_retrieval": [
+            "results",
+            "races",
+            "constructors"
+          ]
+        },
+        "error": null
+      },
+      "retrieval": {
+        "plain_dense": {
+          "reciprocal_rank": 0.25,
+          "recall_at_k": 0.6666666666666666,
+          "precision_at_k": 0.2857142857142857,
+          "all_required_tables_found": false
+        },
+        "enriched_dense": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 0.6666666666666666,
+          "precision_at_k": 0.2857142857142857,
+          "all_required_tables_found": false
+        },
+        "enriched_augmented": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.3333333333333333,
+          "all_required_tables_found": true
+        }
+      },
+      "model_calls": [
+        {
+          "elapsed_s": 8.916312800000014,
+          "quota_wait_s": 8.01599999999962,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 58,
+            "prompt_tokens": 242,
+            "total_tokens": 300,
+            "completion_time": 0.12070737,
+            "completion_tokens_details": {
+              "reasoning_tokens": 48
+            },
+            "prompt_time": 0.014059516,
+            "prompt_tokens_details": null,
+            "queue_time": 0.347966009,
+            "total_time": 0.134766886
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_4200b3f836",
+          "response": "DATABASE"
+        },
+        {
+          "elapsed_s": 22.000628000001598,
+          "quota_wait_s": 20.2795000000023,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 231,
+            "prompt_tokens": 1457,
+            "total_tokens": 1688,
+            "completion_time": 0.640353993,
+            "completion_tokens_details": {
+              "reasoning_tokens": 166
+            },
+            "prompt_time": 0.480595893,
+            "prompt_tokens_details": {
+              "cached_tokens": 512
+            },
+            "queue_time": 0.316694005,
+            "total_time": 1.120949886
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_49bfac06f1",
+          "response": "SELECT SUM(r.points) AS total_points\nFROM results r\nJOIN races ra ON r.raceId = ra.raceId\nJOIN constructors c ON r.constructorId = c.constructorId\nWHERE ra.year = 2022\n  AND c.name = 'Ferrari';"
+        },
+        {
+          "elapsed_s": 22.379809599999135,
+          "quota_wait_s": 20.542499999999997,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 246,
+            "prompt_tokens": 1562,
+            "total_tokens": 1808,
+            "completion_time": 0.586871477,
+            "completion_tokens_details": {
+              "reasoning_tokens": 181
+            },
+            "prompt_time": 0.280494969,
+            "prompt_tokens_details": {
+              "cached_tokens": 512
+            },
+            "queue_time": 0.309774503,
+            "total_time": 0.867366446
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_df9620fe21",
+          "response": "SELECT SUM(r.points) \nFROM results AS r\nJOIN races AS ra ON r.raceId = ra.raceId\nJOIN constructors AS c ON r.constructorId = c.constructorId\nWHERE ra.year = 2022\n  AND c.name = 'Ferrari';"
+        },
+        {
+          "elapsed_s": 8.971511400002782,
+          "quota_wait_s": 7.826500000000379,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 71,
+            "prompt_tokens": 278,
+            "total_tokens": 349,
+            "completion_time": 0.148546149,
+            "completion_tokens_details": {
+              "reasoning_tokens": 61
+            },
+            "prompt_time": 0.011591734,
+            "prompt_tokens_details": null,
+            "queue_time": 0.212743063,
+            "total_time": 0.160137883
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_c3da0d4bb9",
+          "response": "519"
+        },
+        {
+          "elapsed_s": 8.27899830000024,
+          "quota_wait_s": 7.39650000000096,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 158,
+            "prompt_tokens": 167,
+            "total_tokens": 325,
+            "completion_time": 0.331988915,
+            "completion_tokens_details": {
+              "reasoning_tokens": 105
+            },
+            "prompt_time": 0.009110361,
+            "prompt_tokens_details": null,
+            "queue_time": 0.213220998,
+            "total_time": 0.341099276
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_69334c0be3",
+          "response": "What was Ferrari's total points in 2022 including sprint points?  \nHow many race wins did Ferrari achieve in the 2022 season?  \nWhich Ferrari driver scored the highest number of points in 2022?"
+        }
+      ],
+      "retrieval_ranks": {
+        "plain_dense": [
+          "sprint_results",
+          "driver_standings",
+          "constructor_results",
+          "results",
+          "qualifying",
+          "constructor_standings",
+          "races"
+        ],
+        "enriched_dense": [
+          "results",
+          "driver_standings",
+          "sprint_results",
+          "qualifying",
+          "constructor_results",
+          "races",
+          "drivers"
+        ],
+        "enriched_augmented": [
+          "results",
+          "driver_standings",
+          "sprint_results",
+          "qualifying",
+          "constructor_results",
+          "races",
+          "drivers",
+          "constructors",
+          "circuits"
+        ]
+      }
+    },
+    {
+      "id": "D05",
+      "split": "dev",
+      "question": "For the 2023 British Grand Prix qualifying, return surnames and positions for the top three, ordered by position.",
+      "reference_sql": "SELECT d.surname,q.position FROM qualifying q JOIN drivers d USING(driverId) JOIN races r USING(raceId) WHERE r.year=2023 AND r.name='British Grand Prix' AND q.position<=3 ORDER BY q.position",
+      "required_tables": [
+        "qualifying",
+        "drivers",
+        "races"
+      ],
+      "category": "join",
+      "ordered": true,
+      "expected_result": {
+        "id": "D05",
+        "columns": [
+          "surname",
+          "position"
+        ],
+        "rows": [
+          {
+            "surname": "Verstappen",
+            "position": 1
+          },
+          {
+            "surname": "Norris",
+            "position": 2
+          },
+          {
+            "surname": "Piastri",
+            "position": 3
+          }
+        ],
+        "numeric_columns": [
+          1
+        ],
+        "integer_columns": [
+          1
+        ]
+      },
+      "first_attempt_correct": false,
+      "final_correct": true,
+      "retries": 1,
+      "elapsed_s": 69.64691500000117,
+      "response": {
+        "answer": "- Verstappen – 1  \n- Norris – 2  \n- Piastri – 3",
+        "sql": "SELECT d.surname, q.position FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId JOIN drivers AS d ON q.driverId = d.driverId WHERE r.year = 2023 AND r.name LIKE '%British Grand Prix%' AND q.position IN (1, 2, 3) ORDER BY q.position LIMIT 50",
+        "results": {
+          "columns": [
+            "surname",
+            "position"
+          ],
+          "rows": [
+            {
+              "surname": "Verstappen",
+              "position": 1
+            },
+            {
+              "surname": "Norris",
+              "position": 2
+            },
+            {
+              "surname": "Piastri",
+              "position": 3
+            }
+          ],
+          "row_count": 3,
+          "row_limit": 50
+        },
+        "execution_time": 69.65,
+        "follow_ups": [
+          "What were the lap times for Verstappen, Norris, and Piastri in qualifying?",
+          "How did the top three qualifiers finish in the race compared to their qualifying positions?",
+          "What is the average qualifying position for drivers from the same teams as the top three qualifiers?"
+        ],
+        "agent_steps": [
+          {
+            "node": "classify",
+            "action": "Classified user intent",
+            "result": "📊 Database query"
+          },
+          {
+            "node": "retrieve_schema",
+            "action": "RAG search for relevant tables",
+            "result": "Found schema context (2590 chars)"
+          },
+          {
+            "node": "generate_sql",
+            "action": "LLM generated SQL",
+            "result": "SELECT d.surname, q.position\nFROM qualifying q\nJOIN races r ON q.raceId = r.raceId\nJOIN drivers d ON...",
+            "safe": true,
+            "sql": "SELECT d.surname, q.position\nFROM qualifying q\nJOIN races r ON q.raceId = r.raceId\nJOIN drivers d ON q.driverId = d.driverId\nWHERE r.year = 2023\n  AND r.name LIKE '%British Grand Prix%'\n  AND q.position IN (1,2,3)\nORDER BY q.position;",
+            "attempt": 1,
+            "raw_response": "SELECT d.surname, q.position\nFROM qualifying q\nJOIN races r ON q.raceId = r.raceId\nJOIN drivers d ON q.driverId = d.driverId\nWHERE r.year = 2023\n  AND r.name LIKE '%British Grand Prix%'\n  AND q.position IN (1,2,3)\nORDER BY q.position;"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 1,
+            "sql": "SELECT __f1_probe_missing_column__, d.surname, q.position FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId JOIN drivers AS d ON q.driverId = d.driverId WHERE r.year = 2023 AND r.name LIKE '%British Grand Prix%' AND q.position IN (1, 2, 3) ORDER BY q.position",
+            "execution_result": {
+              "success": false,
+              "columns": [],
+              "rows": [],
+              "row_count": 0,
+              "error": "1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'",
+              "executed_sql": "SELECT __f1_probe_missing_column__, d.surname, q.position FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId JOIN drivers AS d ON q.driverId = d.driverId WHERE r.year = 2023 AND r.name LIKE '%British Grand Prix%' AND q.position IN (1, 2, 3) ORDER BY q.position",
+              "controlled_fault": "injected nonexistent projection column on first execution only"
+            },
+            "action": "Executed SQL",
+            "result": "❌ 0 rows | Error: 1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "⚠️ Issues: [\"1054 (42S22): Unknown column '__f1_probe_missing_column__' in 'field list'\"]"
+          },
+          {
+            "node": "retry_sql",
+            "attempt": 2,
+            "sql": "SELECT d.surname, q.position\nFROM qualifying q\nJOIN races r ON q.raceId = r.raceId\nJOIN drivers d ON q.driverId = d.driverId\nWHERE r.year = 2023\n  AND r.name LIKE '%British Grand Prix%'\n  AND q.position IN (1, 2, 3)\nORDER BY q.position;",
+            "raw_response": "SELECT d.surname, q.position\nFROM qualifying q\nJOIN races r ON q.raceId = r.raceId\nJOIN drivers d ON q.driverId = d.driverId\nWHERE r.year = 2023\n  AND r.name LIKE '%British Grand Prix%'\n  AND q.position IN (1, 2, 3)\nORDER BY q.position;",
+            "action": "Retry attempt #2",
+            "result": "SELECT d.surname, q.position\nFROM qualifying q\nJOIN races r ON q.raceId = r.raceId\nJOIN drivers d ON"
+          },
+          {
+            "node": "execute_sql",
+            "attempt": 2,
+            "sql": "SELECT d.surname, q.position FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId JOIN drivers AS d ON q.driverId = d.driverId WHERE r.year = 2023 AND r.name LIKE '%British Grand Prix%' AND q.position IN (1, 2, 3) ORDER BY q.position LIMIT 50",
+            "execution_result": {
+              "success": true,
+              "columns": [
+                "surname",
+                "position"
+              ],
+              "rows": [
+                {
+                  "surname": "Verstappen",
+                  "position": 1
+                },
+                {
+                  "surname": "Norris",
+                  "position": 2
+                },
+                {
+                  "surname": "Piastri",
+                  "position": 3
+                }
+              ],
+              "row_count": 3,
+              "error": null,
+              "executed_sql": "SELECT d.surname, q.position FROM qualifying AS q JOIN races AS r ON q.raceId = r.raceId JOIN drivers AS d ON q.driverId = d.driverId WHERE r.year = 2023 AND r.name LIKE '%British Grand Prix%' AND q.position IN (1, 2, 3) ORDER BY q.position LIMIT 50",
+              "row_limit": 50,
+              "numeric_columns": [
+                1
+              ],
+              "integer_columns": [
+                1
+              ]
+            },
+            "action": "Executed SQL",
+            "result": "✅ 3 rows"
+          },
+          {
+            "node": "reflect",
+            "action": "Validating results",
+            "result": "✅ Results look good"
+          },
+          {
+            "node": "generate_answer",
+            "action": "Generated natural language answer",
+            "result": "- Verstappen – 1  \n- Norris – 2  \n- Piastri – 3"
+          }
+        ],
+        "rag_metrics": {
+          "relevance_source": "generated_sql_table_proxy",
+          "answer_check_type": "result_value_substring_coverage",
+          "reciprocal_rank": 0.5,
+          "mrr": 0.5,
+          "recall_at_k": 1.0,
+          "k": 7,
+          "context_relevance": 0.4286,
+          "faithfulness_score": 1.0,
+          "faithfulness_matched": 3,
+          "faithfulness_total": 3,
+          "retrieved_tables": [
+            "results",
+            "qualifying",
+            "drivers",
+            "races",
+            "circuits",
+            "constructors",
+            "sprint_results"
+          ],
+          "tables_used_in_sql": [
+            "qualifying",
+            "races",
+            "drivers"
+          ],
+          "tables_found_in_retrieval": [
+            "qualifying",
+            "races",
+            "drivers"
+          ]
+        },
+        "error": null
+      },
+      "retrieval": {
+        "plain_dense": {
+          "reciprocal_rank": 1.0,
+          "recall_at_k": 0.6666666666666666,
+          "precision_at_k": 0.2857142857142857,
+          "all_required_tables_found": false
+        },
+        "enriched_dense": {
+          "reciprocal_rank": 0.5,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.42857142857142855,
+          "all_required_tables_found": true
+        },
+        "enriched_augmented": {
+          "reciprocal_rank": 0.5,
+          "recall_at_k": 1.0,
+          "precision_at_k": 0.42857142857142855,
+          "all_required_tables_found": true
+        }
+      },
+      "model_calls": [
+        {
+          "elapsed_s": 9.041934499997296,
+          "quota_wait_s": 8.340499999998283,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 55,
+            "prompt_tokens": 243,
+            "total_tokens": 298,
+            "completion_time": 0.119327848,
+            "completion_tokens_details": {
+              "reasoning_tokens": 45
+            },
+            "prompt_time": 0.010362986,
+            "prompt_tokens_details": null,
+            "queue_time": 0.346255144,
+            "total_time": 0.129690834
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_4140daa9c2",
+          "response": "DATABASE"
+        },
+        {
+          "elapsed_s": 21.08176199999798,
+          "quota_wait_s": 19.442499999999995,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 349,
+            "prompt_tokens": 1343,
+            "total_tokens": 1692,
+            "completion_time": 0.72752456,
+            "completion_tokens_details": {
+              "reasoning_tokens": 267
+            },
+            "prompt_time": 0.06122879,
+            "prompt_tokens_details": null,
+            "queue_time": 0.396967273,
+            "total_time": 0.78875335
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_93703442d9",
+          "response": "SELECT d.surname, q.position\nFROM qualifying q\nJOIN races r ON q.raceId = r.raceId\nJOIN drivers d ON q.driverId = d.driverId\nWHERE r.year = 2023\n  AND r.name LIKE '%British Grand Prix%'\n  AND q.position IN (1,2,3)\nORDER BY q.position;"
+        },
+        {
+          "elapsed_s": 21.269016300000658,
+          "quota_wait_s": 19.68300000000134,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 324,
+            "prompt_tokens": 1466,
+            "total_tokens": 1790,
+            "completion_time": 0.67962779,
+            "completion_tokens_details": {
+              "reasoning_tokens": 240
+            },
+            "prompt_time": 0.089900372,
+            "prompt_tokens_details": null,
+            "queue_time": 0.347628751,
+            "total_time": 0.769528162
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_64b2f1c926",
+          "response": "SELECT d.surname, q.position\nFROM qualifying q\nJOIN races r ON q.raceId = r.raceId\nJOIN drivers d ON q.driverId = d.driverId\nWHERE r.year = 2023\n  AND r.name LIKE '%British Grand Prix%'\n  AND q.position IN (1, 2, 3)\nORDER BY q.position;"
+        },
+        {
+          "elapsed_s": 9.572969599998032,
+          "quota_wait_s": 8.5,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 74,
+            "prompt_tokens": 333,
+            "total_tokens": 407,
+            "completion_time": 0.157017198,
+            "completion_tokens_details": {
+              "reasoning_tokens": 45
+            },
+            "prompt_time": 0.017731792,
+            "prompt_tokens_details": null,
+            "queue_time": 0.31169329,
+            "total_time": 0.17474899
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_5082008e34",
+          "response": "- Verstappen – 1  \n- Norris – 2  \n- Piastri – 3"
+        },
+        {
+          "elapsed_s": 8.566697800000838,
+          "quota_wait_s": 7.6120000000023005,
+          "provider_retries": [],
+          "token_usage": {
+            "completion_tokens": 164,
+            "prompt_tokens": 187,
+            "total_tokens": 351,
+            "completion_time": 0.344384141,
+            "completion_tokens_details": {
+              "reasoning_tokens": 101
+            },
+            "prompt_time": 0.011444982,
+            "prompt_tokens_details": null,
+            "queue_time": 0.3181539,
+            "total_time": 0.355829123
+          },
+          "finish_reason": "stop",
+          "system_fingerprint": "fp_c800245357",
+          "response": "What were the lap times for Verstappen, Norris, and Piastri in qualifying?  \nHow did the top three qualifiers finish in the race compared to their qualifying positions?  \nWhat is the average qualifying position for drivers from the same teams as the top three qualifiers?"
+        }
+      ],
+      "retrieval_ranks": {
+        "plain_dense": [
+          "qualifying",
+          "constructors",
+          "races",
+          "driver_standings",
+          "sprint_results",
+          "circuits",
+          "results"
+        ],
+        "enriched_dense": [
+          "results",
+          "qualifying",
+          "drivers",
+          "races",
+          "circuits",
+          "constructors",
+          "sprint_results"
+        ],
+        "enriched_augmented": [
+          "results",
+          "qualifying",
+          "drivers",
+          "races",
+          "circuits",
+          "constructors",
+          "sprint_results"
+        ]
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "D01",
+      "columns": [
+        "n"
+      ],
+      "rows": [
+        {
+          "n": 22
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "D02",
+      "columns": [
+        "surname",
+        "n"
+      ],
+      "rows": [
+        {
+          "surname": "Hamilton",
+          "n": 105
+        },
+        {
+          "surname": "Schumacher",
+          "n": 91
+        },
+        {
+          "surname": "Verstappen",
+          "n": 63
+        },
+        {
+          "surname": "Vettel",
+          "n": 53
+        },
+        {
+          "surname": "Prost",
+          "n": 51
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": [
+        1
+      ]
+    },
+    {
+      "id": "D03",
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        {
+          "name": "Autodromo Enzo e Dino Ferrari"
+        },
+        {
+          "name": "Autodromo Internazionale del Mugello"
+        },
+        {
+          "name": "Autodromo Nazionale di Monza"
+        },
+        {
+          "name": "Pescara Circuit"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "D04",
+      "columns": [
+        "SUM(r.points)"
+      ],
+      "rows": [
+        {
+          "SUM(r.points)": 519.0
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "D05",
+      "columns": [
+        "surname",
+        "position"
+      ],
+      "rows": [
+        {
+          "surname": "Verstappen",
+          "position": 1
+        },
+        {
+          "surname": "Norris",
+          "position": 2
+        },
+        {
+          "surname": "Piastri",
+          "position": 3
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": [
+        1
+      ]
+    },
+    {
+      "id": "D06",
+      "columns": [
+        "AVG(p.milliseconds)"
+      ],
+      "rows": [
+        {
+          "AVG(p.milliseconds)": "122574.4857"
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "D07",
+      "columns": [
+        "MIN(l.milliseconds)"
+      ],
+      "rows": [
+        {
+          "MIN(l.milliseconds)": 86103
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "D08",
+      "columns": [
+        "COUNT(DISTINCT s.raceId)"
+      ],
+      "rows": [
+        {
+          "COUNT(DISTINCT s.raceId)": 3
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "D09",
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        {
+          "name": "Alta"
+        },
+        {
+          "name": "Arrows"
+        },
+        {
+          "name": "Aston Butterworth"
+        },
+        {
+          "name": "Aston Martin"
+        },
+        {
+          "name": "BAR"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "D10",
+      "columns": [
+        "name"
+      ],
+      "rows": [],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "D11",
+      "columns": [
+        "name",
+        "date"
+      ],
+      "rows": [
+        {
+          "name": "Austrian Grand Prix",
+          "date": "2020-07-05"
+        },
+        {
+          "name": "Styrian Grand Prix",
+          "date": "2020-07-12"
+        },
+        {
+          "name": "Hungarian Grand Prix",
+          "date": "2020-07-19"
+        },
+        {
+          "name": "British Grand Prix",
+          "date": "2020-08-02"
+        },
+        {
+          "name": "70th Anniversary Grand Prix",
+          "date": "2020-08-09"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "D12",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 19
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "D13",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 3
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "D14",
+      "columns": [
+        "AVG(lat)"
+      ],
+      "rows": [
+        {
+          "AVG(lat)": 44.10799980163574
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "D15",
+      "columns": [
+        "MIN(lat)"
+      ],
+      "rows": [
+        {
+          "MIN(lat)": -23.7036
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "D16",
+      "columns": [
+        "surname",
+        "points"
+      ],
+      "rows": [
+        {
+          "surname": "Verstappen",
+          "points": 454.0
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "D17",
+      "columns": [
+        "name",
+        "points"
+      ],
+      "rows": [
+        {
+          "name": "Red Bull",
+          "points": 759.0
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "D18",
+      "columns": [
+        "surname",
+        "grid"
+      ],
+      "rows": [
+        {
+          "surname": "Verstappen",
+          "grid": 1
+        },
+        {
+          "surname": "Alonso",
+          "grid": 2
+        },
+        {
+          "surname": "Ocon",
+          "grid": 3
+        },
+        {
+          "surname": "Sainz",
+          "grid": 4
+        },
+        {
+          "surname": "Hamilton",
+          "grid": 5
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": [
+        1
+      ]
+    },
+    {
+      "id": "D19",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 10
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "D20",
+      "columns": [
+        "name",
+        "points"
+      ],
+      "rows": [
+        {
+          "name": "Red Bull",
+          "points": 36.0
+        },
+        {
+          "name": "Aston Martin",
+          "points": 27.0
+        },
+        {
+          "name": "Mercedes",
+          "points": 18.0
+        },
+        {
+          "name": "McLaren",
+          "points": 12.0
+        },
+        {
+          "name": "Haas F1 Team",
+          "points": 6.0
+        },
+        {
+          "name": "Alfa Romeo",
+          "points": 2.0
+        },
+        {
+          "name": "AlphaTauri",
+          "points": 1.0
+        },
+        {
+          "name": "Alpine F1 Team",
+          "points": 0.0
+        },
+        {
+          "name": "Ferrari",
+          "points": 0.0
+        },
+        {
+          "name": "Williams",
+          "points": 0.0
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "E01",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 21
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E02",
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        {
+          "name": "Charade Circuit"
+        },
+        {
+          "name": "Circuit Paul Ricard"
+        },
+        {
+          "name": "Circuit de Nevers Magny-Cours"
+        },
+        {
+          "name": "Dijon-Prenois"
+        },
+        {
+          "name": "Le Mans"
+        },
+        {
+          "name": "Reims-Gueux"
+        },
+        {
+          "name": "Rouen-Les-Essarts"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E03",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 53
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E04",
+      "columns": [
+        "name",
+        "n"
+      ],
+      "rows": [
+        {
+          "name": "Ferrari",
+          "n": 249
+        },
+        {
+          "name": "McLaren",
+          "n": 185
+        },
+        {
+          "name": "Mercedes",
+          "n": 129
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": [
+        1
+      ]
+    },
+    {
+      "id": "E05",
+      "columns": [
+        "name",
+        "round"
+      ],
+      "rows": [
+        {
+          "name": "Australian Grand Prix",
+          "round": 1
+        },
+        {
+          "name": "Bahrain Grand Prix",
+          "round": 2
+        },
+        {
+          "name": "Chinese Grand Prix",
+          "round": 3
+        },
+        {
+          "name": "Azerbaijan Grand Prix",
+          "round": 4
+        },
+        {
+          "name": "Spanish Grand Prix",
+          "round": 5
+        },
+        {
+          "name": "Monaco Grand Prix",
+          "round": 6
+        },
+        {
+          "name": "Canadian Grand Prix",
+          "round": 7
+        },
+        {
+          "name": "French Grand Prix",
+          "round": 8
+        },
+        {
+          "name": "Austrian Grand Prix",
+          "round": 9
+        },
+        {
+          "name": "British Grand Prix",
+          "round": 10
+        },
+        {
+          "name": "German Grand Prix",
+          "round": 11
+        },
+        {
+          "name": "Hungarian Grand Prix",
+          "round": 12
+        },
+        {
+          "name": "Belgian Grand Prix",
+          "round": 13
+        },
+        {
+          "name": "Italian Grand Prix",
+          "round": 14
+        },
+        {
+          "name": "Singapore Grand Prix",
+          "round": 15
+        },
+        {
+          "name": "Russian Grand Prix",
+          "round": 16
+        },
+        {
+          "name": "Japanese Grand Prix",
+          "round": 17
+        },
+        {
+          "name": "United States Grand Prix",
+          "round": 18
+        },
+        {
+          "name": "Mexican Grand Prix",
+          "round": 19
+        },
+        {
+          "name": "Brazilian Grand Prix",
+          "round": 20
+        },
+        {
+          "name": "Abu Dhabi Grand Prix",
+          "round": 21
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": [
+        1
+      ]
+    },
+    {
+      "id": "E06",
+      "columns": [
+        "surname",
+        "position"
+      ],
+      "rows": [
+        {
+          "surname": "Gasly",
+          "position": "1"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E07",
+      "columns": [
+        "MIN(p.milliseconds)"
+      ],
+      "rows": [
+        {
+          "MIN(p.milliseconds)": 24227
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E08",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 504
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E09",
+      "columns": [
+        "surname",
+        "position"
+      ],
+      "rows": [
+        {
+          "surname": "Verstappen",
+          "position": "1"
+        },
+        {
+          "surname": "Pérez",
+          "position": "2"
+        },
+        {
+          "surname": "Sainz",
+          "position": "3"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E10",
+      "columns": [
+        "surname",
+        "position"
+      ],
+      "rows": [
+        {
+          "surname": "Leclerc",
+          "position": 1
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": [
+        1
+      ]
+    },
+    {
+      "id": "E11",
+      "columns": [
+        "surname",
+        "points"
+      ],
+      "rows": [
+        {
+          "surname": "Rosberg",
+          "points": 385.0
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "E12",
+      "columns": [
+        "name",
+        "points"
+      ],
+      "rows": [
+        {
+          "name": "Mercedes",
+          "points": 668.0
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "E13",
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        {
+          "name": "ATS"
+        },
+        {
+          "name": "AlphaTauri"
+        },
+        {
+          "name": "Andrea Moda"
+        },
+        {
+          "name": "Arzani-Volpini"
+        },
+        {
+          "name": "Behra-Porsche"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E14",
+      "columns": [
+        "surname",
+        "dob"
+      ],
+      "rows": [
+        {
+          "surname": "Fushida",
+          "dob": "1946-03-10"
+        },
+        {
+          "surname": "Hasemi",
+          "dob": "1945-11-13"
+        },
+        {
+          "surname": "Hattori",
+          "dob": "1966-06-13"
+        },
+        {
+          "surname": "Hoshino",
+          "dob": "1947-07-01"
+        },
+        {
+          "surname": "Ide",
+          "dob": "1975-01-21"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E15",
+      "columns": [
+        "name",
+        "location"
+      ],
+      "rows": [
+        {
+          "name": "Fuji Speedway",
+          "location": "Oyama"
+        },
+        {
+          "name": "Okayama International Circuit",
+          "location": "Okayama"
+        },
+        {
+          "name": "Suzuka Circuit",
+          "location": "Suzuka"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E16",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 0
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E17",
+      "columns": [
+        "name"
+      ],
+      "rows": [],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E18",
+      "columns": [
+        "MIN(year)",
+        "MAX(year)"
+      ],
+      "rows": [
+        {
+          "MIN(year)": 1950,
+          "MAX(year)": 2024
+        }
+      ],
+      "numeric_columns": [
+        0,
+        1
+      ],
+      "integer_columns": [
+        0,
+        1
+      ]
+    },
+    {
+      "id": "E19",
+      "columns": [
+        "MIN(year)",
+        "MAX(year)"
+      ],
+      "rows": [
+        {
+          "MIN(year)": 1950,
+          "MAX(year)": 2024
+        }
+      ],
+      "numeric_columns": [
+        0,
+        1
+      ],
+      "integer_columns": [
+        0,
+        1
+      ]
+    },
+    {
+      "id": "E20",
+      "columns": [
+        "COUNT(DISTINCT r.driverId)"
+      ],
+      "rows": [
+        {
+          "COUNT(DISTINCT r.driverId)": 6
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E21",
+      "columns": [
+        "name",
+        "p"
+      ],
+      "rows": [
+        {
+          "name": "Mercedes",
+          "p": 701.0
+        },
+        {
+          "name": "Red Bull",
+          "p": 405.0
+        },
+        {
+          "name": "Williams",
+          "p": 320.0
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "E22",
+      "columns": [
+        "surname",
+        "n"
+      ],
+      "rows": [
+        {
+          "surname": "Alonso",
+          "n": 10
+        },
+        {
+          "surname": "Vettel",
+          "n": 10
+        },
+        {
+          "surname": "Webber",
+          "n": 10
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": [
+        1
+      ]
+    },
+    {
+      "id": "E23",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 11
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E24",
+      "columns": [
+        "status",
+        "n"
+      ],
+      "rows": [
+        {
+          "status": "Finished",
+          "n": 191
+        },
+        {
+          "status": "+1 Lap",
+          "n": 109
+        },
+        {
+          "status": "+2 Laps",
+          "n": 33
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": [
+        1
+      ]
+    },
+    {
+      "id": "E25",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 52
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E26",
+      "columns": [
+        "AVG(l.milliseconds)"
+      ],
+      "rows": [
+        {
+          "AVG(l.milliseconds)": "87557.5392"
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "E27",
+      "columns": [
+        "COUNT(DISTINCT s.raceId)"
+      ],
+      "rows": [
+        {
+          "COUNT(DISTINCT s.raceId)": 3
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E28",
+      "columns": [
+        "surname",
+        "q3"
+      ],
+      "rows": [
+        {
+          "surname": "Vettel",
+          "q3": "1:10.240"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E29",
+      "columns": [
+        "name",
+        "points"
+      ],
+      "rows": [
+        {
+          "name": "Mercedes",
+          "points": 44.0
+        },
+        {
+          "name": "Red Bull",
+          "points": 15.0
+        },
+        {
+          "name": "Ferrari",
+          "points": 13.0
+        },
+        {
+          "name": "AlphaTauri",
+          "points": 10.0
+        },
+        {
+          "name": "McLaren",
+          "points": 8.0
+        },
+        {
+          "name": "Racing Point",
+          "points": 6.0
+        },
+        {
+          "name": "Renault",
+          "points": 6.0
+        },
+        {
+          "name": "Alfa Romeo",
+          "points": 0.0
+        },
+        {
+          "name": "Haas F1 Team",
+          "points": 0.0
+        },
+        {
+          "name": "Williams",
+          "points": 0.0
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "E30",
+      "columns": [
+        "name",
+        "country"
+      ],
+      "rows": [
+        {
+          "name": "Istanbul Park",
+          "country": "Turkey"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E31",
+      "columns": [
+        "MAX(lat)"
+      ],
+      "rows": [
+        {
+          "MAX(lat)": -34.9272
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "E32",
+      "columns": [
+        "SUM(r.laps)"
+      ],
+      "rows": [
+        {
+          "SUM(r.laps)": "1294"
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "E33",
+      "columns": [
+        "SUM(r.points)"
+      ],
+      "rows": [
+        {
+          "SUM(r.points)": 190.0
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": []
+    },
+    {
+      "id": "E34",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 2
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E35",
+      "columns": [
+        "name",
+        "date"
+      ],
+      "rows": [
+        {
+          "name": "British Grand Prix",
+          "date": "1950-05-13"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E36",
+      "columns": [
+        "COUNT(DISTINCT r.constructorId)"
+      ],
+      "rows": [
+        {
+          "COUNT(DISTINCT r.constructorId)": 10
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E37",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 166
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E38",
+      "columns": [
+        "COUNT(*)"
+      ],
+      "rows": [
+        {
+          "COUNT(*)": 10
+        }
+      ],
+      "numeric_columns": [
+        0
+      ],
+      "integer_columns": [
+        0
+      ]
+    },
+    {
+      "id": "E39",
+      "columns": [
+        "name",
+        "country"
+      ],
+      "rows": [
+        {
+          "name": "Albert Park Grand Prix Circuit",
+          "country": "Australia"
+        },
+        {
+          "name": "Autodromo Nazionale di Monza",
+          "country": "Italy"
+        },
+        {
+          "name": "Autódromo Hermanos Rodríguez",
+          "country": "Mexico"
+        },
+        {
+          "name": "Autódromo José Carlos Pace",
+          "country": "Brazil"
+        },
+        {
+          "name": "Bahrain International Circuit",
+          "country": "Bahrain"
+        },
+        {
+          "name": "Baku City Circuit",
+          "country": "Azerbaijan"
+        },
+        {
+          "name": "Circuit Gilles Villeneuve",
+          "country": "Canada"
+        },
+        {
+          "name": "Circuit Park Zandvoort",
+          "country": "Netherlands"
+        },
+        {
+          "name": "Circuit de Barcelona-Catalunya",
+          "country": "Spain"
+        },
+        {
+          "name": "Circuit de Monaco",
+          "country": "Monaco"
+        },
+        {
+          "name": "Circuit de Spa-Francorchamps",
+          "country": "Belgium"
+        },
+        {
+          "name": "Circuit of the Americas",
+          "country": "USA"
+        },
+        {
+          "name": "Hungaroring",
+          "country": "Hungary"
+        },
+        {
+          "name": "Jeddah Corniche Circuit",
+          "country": "Saudi Arabia"
+        },
+        {
+          "name": "Las Vegas Strip Street Circuit",
+          "country": "United States"
+        },
+        {
+          "name": "Losail International Circuit",
+          "country": "Qatar"
+        },
+        {
+          "name": "Marina Bay Street Circuit",
+          "country": "Singapore"
+        },
+        {
+          "name": "Miami International Autodrome",
+          "country": "USA"
+        },
+        {
+          "name": "Red Bull Ring",
+          "country": "Austria"
+        },
+        {
+          "name": "Silverstone Circuit",
+          "country": "UK"
+        },
+        {
+          "name": "Suzuka Circuit",
+          "country": "Japan"
+        },
+        {
+          "name": "Yas Marina Circuit",
+          "country": "UAE"
+        }
+      ],
+      "numeric_columns": [],
+      "integer_columns": []
+    },
+    {
+      "id": "E40",
+      "columns": [
+        "surname",
+        "position"
+      ],
+      "rows": [
+        {
+          "surname": "Vettel",
+          "position": 1
+        },
+        {
+          "surname": "Alonso",
+          "position": 2
+        },
+        {
+          "surname": "Webber",
+          "position": 3
+        },
+        {
+          "surname": "Hamilton",
+          "position": 4
+        },
+        {
+          "surname": "Räikkönen",
+          "position": 5
+        }
+      ],
+      "numeric_columns": [
+        1
+      ],
+      "integer_columns": [
+        1
+      ]
+    }
+  ],
+  "methodology": "Independent reference-result equivalence; exact projection/order contracts; numerical tolerance 1e-6; fresh history per case; no model sees reference SQL/results or required table labels.",
+  "reference_artifact_sha256": "d6ee0d173b814bc7f9fa34f872d61bede463a1525d40e282d60dacf22af020d3",
+  "model": "openai/gpt-oss-120b",
+  "temperature": 0.1,
+  "max_tokens": 800,
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "embedding_revision": null,
+  "embedding_weights_sha256": "2c705a5e3279febcd4b210fc95a6231ced10be71e400e863ab41b623d5799508",
+  "dependencies": {
+    "annotated-doc": "0.0.5",
+    "annotated-types": "0.8.0",
+    "anyio": "4.15.1",
+    "blinker": "1.9.0",
+    "certifi": "2026.7.22",
+    "charset-normalizer": "3.5.2",
+    "click": "8.5.0",
+    "cloudpickle": "3.1.2",
+    "colorama": "0.4.6",
+    "distro": "1.9.0",
+    "faiss-cpu": "1.15.1",
+    "filelock": "4.0.10",
+    "Flask": "3.1.3",
+    "flask-cors": "6.0.5",
+    "fsspec": "2026.9.0",
+    "groq": "0.37.1",
+    "h11": "0.16.0",
+    "hf-xet": "1.6.0",
+    "httpcore": "1.0.9",
+    "httpcore2": "2.13.1",
+    "httpx": "0.28.1",
+    "httpx2": "2.13.1",
+    "huggingface_hub": "1.33.0",
+    "idna": "3.20",
+    "iniconfig": "2.3.0",
+    "itsdangerous": "2.2.0",
+    "Jinja2": "3.1.6",
+    "joblib": "1.6.0",
+    "jsonpatch": "1.33",
+    "jsonpointer": "3.1.1",
+    "langchain-core": "1.6.6",
+    "langchain-groq": "1.1.3",
+    "langchain-protocol": "0.0.19",
+    "langgraph": "1.2.12",
+    "langgraph-checkpoint": "4.2.0",
+    "langgraph-prebuilt": "1.1.0",
+    "langgraph-sdk": "0.4.5",
+    "langsmith": "0.14.4",
+    "markdown-it-py": "4.2.0",
+    "MarkupSafe": "3.0.4",
+    "mdurl": "0.1.2",
+    "mpmath": "1.3.0",
+    "mysql-connector-python": "26.7.0",
+    "narwhals": "2.26.0",
+    "networkx": "3.7",
+    "numpy": "2.5.3",
+    "orjson": "3.12.0",
+    "ormsgpack": "1.12.2",
+    "packaging": "26.3",
+    "pip": "25.0.1",
+    "pluggy": "1.6.0",
+    "pydantic": "2.13.5",
+    "pydantic_core": "2.46.5",
+    "Pygments": "2.21.0",
+    "pytest": "9.1.1",
+    "python-dotenv": "1.2.4",
+    "PyYAML": "6.0.3",
+    "regex": "2026.9.29",
+    "requests": "2.34.2",
+    "requests-toolbelt": "1.0.0",
+    "rich": "15.0.0",
+    "safetensors": "0.8.0",
+    "scikit-learn": "1.9.1",
+    "scipy": "1.18.1",
+    "sentence-transformers": "6.1.0",
+    "setuptools": "84.0.0",
+    "shellingham": "1.5.4",
+    "sniffio": "1.3.1",
+    "sqlglot": "27.29.0",
+    "sympy": "1.14.0",
+    "tenacity": "9.1.4",
+    "threadpoolctl": "3.7.0",
+    "tokenizers": "0.23.2",
+    "torch": "2.14.1",
+    "tqdm": "4.70.1",
+    "transformers": "5.18.0",
+    "truststore": "0.10.4",
+    "typer": "0.27.2",
+    "typing_extensions": "4.16.0",
+    "typing-inspection": "0.4.4",
+    "urllib3": "2.8.0",
+    "uuid_utils": "0.17.1",
+    "websockets": "16.1.1",
+    "Werkzeug": "3.1.9",
+    "xxhash": "4.0.1",
+    "zstandard": "0.25.0"
+  },
+  "schema_sha256": "dda2eada85d874c99a22b27cb2e23e860a67fe1a919740799f752ec1fde38bc5",
+  "prompt_sha256": "57b802856a3914bb1cb28f2b55e2fc9303487959eb555d5a2d708a8c49551354",
+  "retrieval_baseline": "Current code with enrichment and co-occurrence disabled, identical schema/sample rows/model/top-7; not a reconstruction of historical MRR.",
+  "controlled_fault": "Unknown projection column injected in first execution only; real model handles database feedback; not natural-query accuracy.",
+  "summary": {
+    "cases": 5,
+    "first_attempt_correct": 0,
+    "final_correct": 5,
+    "first_attempt_execution_accuracy": 0.0,
+    "final_execution_accuracy": 1.0,
+    "retried_cases": 5,
+    "retry_recovered_cases": 5,
+    "retry_recovery_rate": 1.0,
+    "mean_latency_s": 57.718769179999796,
+    "p50_latency_s": 69.64691500000117,
+    "p95_latency_s": 70.67484115999905
+  },
+  "retrieval_summary": {
+    "plain_dense": {
+      "reciprocal_rank": 0.5566666666666666,
+      "recall_at_k": 0.8666666666666666,
+      "precision_at_k": 0.22857142857142856,
+      "all_required_tables_found": 0.6,
+      "cases": 5,
+      "k": 7
+    },
+    "enriched_dense": {
+      "reciprocal_rank": 0.9,
+      "recall_at_k": 0.9333333333333333,
+      "precision_at_k": 0.2571428571428571,
+      "all_required_tables_found": 0.8,
+      "cases": 5,
+      "k": 7
+    },
+    "enriched_augmented": {
+      "recall_at_k": 1.0,
+      "precision_at_k": 0.2509523809523809,
+      "all_required_tables_found": 1.0,
+      "cases": 5,
+      "k": "all injected context tables"
+    }
+  }
+}

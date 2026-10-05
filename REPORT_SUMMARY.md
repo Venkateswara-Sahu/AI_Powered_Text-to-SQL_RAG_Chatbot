@@ -1,5 +1,7 @@
 # F1InsightAI — Project Summary Report
 
+> October 2026 re-evaluation: **39/40 (97.5%) first-attempt; 39/40 (97.5%) final** on 40 independent reference-result contracts; dense MRR@7 **0.678 → 0.888**. See [current results](docs/evaluation/results.md). Historical measurements below are retained for context and are superseded as primary evidence.
+
 **Project Title:** F1InsightAI — AI-Powered Formula 1 Text-to-SQL RAG Chatbot  
 **Student:** Venkateswara Sahu (12204893)  
 **Course:** Term 8 — Capstone Project  
@@ -45,9 +47,9 @@ The system follows a 3-layer architecture:
 1. **classify** — Determines if the question needs SQL or is conversational
 2. **retrieve_schema** — RAG retrieves top-7 relevant table schemas from FAISS + co-occurrence rules inject related tables
 3. **generate_sql** — LLM generates a SQL SELECT query using schema context + F1 domain knowledge
-4. **execute_sql** — Executes on TiDB Cloud (read-only enforced)
+4. **execute_sql** — Executes policy-checked SELECT queries on TiDB Cloud
 5. **reflect** — Validates results; routes to retry or answer
-6. **retry_sql** — Feeds error back to LLM for auto-correction (up to 2 retries)
+6. **retry_sql** — Feeds execution errors back to the LLM; the normal successful-generation path permits one correction attempt
 7. **generate_answer** — LLM creates a natural language summary
 8. **generate_follow_ups** — LLM suggests 3 related follow-up questions
 9. **direct_answer** — Handles conversational queries without SQL
@@ -62,7 +64,7 @@ The RAG (Retrieval-Augmented Generation) pipeline ensures the LLM receives only 
 - **Retrieval (per query):** The user's question is embedded, and FAISS performs a top-7 cosine similarity search. Co-occurrence rules then auto-inject related tables (e.g., `results` → `drivers`, `races` → `circuits`).
 - **Augmentation:** The retrieved table descriptions are injected into the LLM system prompt alongside few-shot examples and F1 domain knowledge (team name changes, race name changes, circuit name mappings).
 
-This approach improves SQL accuracy compared to sending the full 100+ column schema in every prompt.
+This approach narrows schema context; an independent SQL-accuracy improvement has not been established.
 
 ---
 
@@ -78,7 +80,7 @@ This approach improves SQL accuracy compared to sending the full 100+ column sch
 - **SQL syntax highlighting** with copy and download buttons
 - **CSV export** for query result tables
 - **F1 domain knowledge** — European countries, team name history, race name changes, circuit name mappings
-- **Live RAG evaluation** — MRR, Recall@K, Context Relevance, Faithfulness displayed per query in the UI
+- **Live diagnostics** — Generated-SQL table proxies and result-value substring coverage, with unavailable scores explicitly labelled
 - **Docker deployment** — one-command setup with Docker Compose
 
 ### Cinematic Visual Effects ("Kinetic Cockpit" Design)
@@ -94,48 +96,42 @@ This approach improves SQL accuracy compared to sending the full 100+ column sch
 
 ---
 
-## 6. Results (Automated Benchmark — 20 Queries)
+## 6. Evidence and Software Checks
 
-A benchmark script (`tests/benchmark.py`) tested 20 diverse queries across 9 categories:
+The unchanged March 2026 artifact contains 20 questions, including 18 SQL
+questions. **15/18 (83.3%)** SQL-question cases passed generation, nonempty-result
+and answer-keyword smoke checks. This is not reference-result correctness or
+first-attempt accuracy.
 
-| Metric | Value |
-|--------|-------|
-| Total Queries Tested | 20 (18 SQL + 2 conversational) |
-| SQL Query Accuracy (1st attempt) | **83.3%** (15/18) |
-| Queries Needing Retry | 0 |
-| Average Response Time | 21.66s |
-| Database Coverage | 16 tables, 701,530 rows, 131 columns |
+The old benchmark read the wrong retry-trace field and defaulted to 100%
+success with no retry denominator. Its zero retry counts cannot establish
+whether retries occurred. Its latency numerator also excluded exception times.
 
-**Categories with 100% accuracy:** Driver Stats (4/4), Circuit Queries (1/1), Pit Stops (1/1), Lap Times (1/1), Comparison (1/1), Historical (2/2), Qualifying (1/1), Sprint (1/1)
+The repaired benchmark reads agent_steps, preserves raw responses and
+suite/code hashes, measures all request durations and writes fresh artifacts
+without replacing historical results. Empty denominators are null.
+Offline regression tests verify the implementation; the separate October
+reference-result evaluation is linked above. See [evaluation-audit.md](docs/evaluation-audit.md).
 
-**Sample queries tested successfully:**
-- "Who has the most race wins in F1 history?" → Hamilton (105 wins) ✅
-- "Compare Hamilton and Verstappen career stats" → side-by-side comparison ✅
-- "Who won the first ever F1 race?" → Nino Farina ✅
-- "Average pit stop duration in 2023" → correct aggregation ✅
+## 7. Retrieval and Answer Diagnostics
 
----
+Per-query reciprocal rank uses the best retrieved SQL-referenced table.
+Table extraction respects qualified names and scoped CTEs. Relevance still
+comes from generated SQL, so these diagnostics are not independent retrieval
+evaluation. The historical aggregate 0.12 to 0.25 to 0.67 is unresolved and
+is not a current claim.
 
-## 7. RAG Evaluation Metrics
+Answer checks measure substring coverage of eligible values from the first
+five result rows. They do not establish semantic faithfulness; no eligible
+values means not measured. The UI uses these narrower definitions.
 
-Four live metrics are computed per query and displayed in a dedicated bento grid card:
+## 8. Execution Boundary and Conclusion
 
-| Metric | What It Measures |
-|--------|-----------------|
-| **MRR** | Rank of first needed table in FAISS results |
-| **Recall@K** | % of SQL-needed tables found in retrieval |
-| **Context Relevance** | Useful tables / total retrieved |
-| **Faithfulness** | SQL result values matched in the LLM answer |
+A shared parsed SELECT policy rejects multiple statements and known
+side-effect constructs, applies an outer result cap and returns the executed
+query. TLS-enabled connections verify certificate and hostname.
 
-**Three-round iterative improvement** was performed:
-1. **Baseline:** Raw FAISS (MRR avg: 0.12)
-2. **Fix 1:** Excluded system tables + semantic enrichment (MRR avg: 0.25)
-3. **Fix 2:** Co-occurrence rules + top_k=7 + enhanced keywords (MRR avg: **0.67**, 5.5× improvement)
-
-**Key optimizations:** System table exclusion, semantic enrichment keywords, table co-occurrence rules (e.g., `results` → auto-include `drivers`), increased retrieval window from 5 to 7 tables.
-
----
-
-## 8. Conclusion
-
-F1InsightAI demonstrates the practical application of RAG + agentic LLM pipelines for domain-specific Text-to-SQL tasks. The system achieves high SQL accuracy by retrieving only relevant schema context, handles errors through self-reflection and auto-retry, and presents results in a visually engaging "Kinetic Cockpit" interface with cinematic effects (mouse spotlight, telemetry grid, 3D card tilt, rotating conic border, animated hero title). The ChatGPT-style three-dot dropdown menu, conversation pinning, and server-side storage provide a polished chat management experience. Live RAG evaluation metrics provide transparency into retrieval quality. The project combines modern AI techniques (RAG, LangGraph agents, FAISS vector search) with robust engineering (connection pooling, read-only enforcement, Docker deployment) to create a production-quality data exploration tool for Formula 1 enthusiasts.
+Database permissions, server-side resource limits, authenticated conversation
+access remain deployment requirements; the completed local-model evaluation is linked above.
+This is an academic prototype with tested software contracts and explicitly
+bounded historical evidence.

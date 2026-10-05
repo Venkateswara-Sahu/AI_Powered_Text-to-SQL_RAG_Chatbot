@@ -1,4 +1,5 @@
 import os
+import certifi
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,6 +15,10 @@ class Config:
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
     MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "f1db")
     MYSQL_SSL = os.getenv("MYSQL_SSL", "false").lower() == "true"
+    MYSQL_SSL_CA = os.getenv("MYSQL_SSL_CA", certifi.where())
+    SQL_MAX_ROWS = int(os.getenv("SQL_MAX_ROWS", "500"))
+    if SQL_MAX_ROWS < 1:
+        raise ValueError("SQL_MAX_ROWS must be positive.")
 
     # Groq
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")

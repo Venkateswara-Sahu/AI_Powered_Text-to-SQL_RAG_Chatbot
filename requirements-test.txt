@@ -1,0 +1,9 @@
+pytest>=8,<10
+requests>=2.32,<3
+python-dotenv>=1,<2
+certifi>=2024.7.4
+mysql-connector-python>=9,<27
+sqlglot==27.29.0
+langgraph>=0.2,<2
+langchain-groq>=0.2,<2
+langchain-core>=0.3,<2

@@ -703,7 +703,7 @@ function appendBentoGrid(data) {
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     </svg>
-                    Confidence: ${(faithScore * 100).toFixed(0)}%
+                    Result-value coverage: ${(faithScore * 100).toFixed(0)}%
                 </div>`;
     }
     answerHtml += `</div></div>`;
@@ -798,11 +798,16 @@ function appendBentoGrid(data) {
     // Card 6: RAG Evaluation Metrics (Progress Bar Style)
     if (data.rag_metrics && data.rag_metrics.mrr !== undefined) {
         const m = data.rag_metrics;
-        const faithIcon = m.faithfulness_score >= 0.8 ? '✅' : m.faithfulness_score >= 0.5 ? '⚠️' : '❌';
         const metricsCard = document.createElement('div');
         metricsCard.className = `bento-card bento-metrics${chartType ? '' : ' no-chart'}`;
 
         const makeBar = (label, value, max = 1.0, thresholds = [0.8, 0.5]) => {
+            if (!Number.isFinite(value)) {
+                return `<div class="metric-bar-item"><div class="metric-bar-header">
+                    <span class="metric-bar-label">${label}</span>
+                    <span class="metric-bar-value">Not measured</span>
+                </div></div>`;
+            }
             const pct = Math.min((value / max) * 100, 100);
             const cls = value >= thresholds[0] ? 'good' : value >= thresholds[1] ? 'ok' : 'bad';
             const display = max === 1.0 ? value.toFixed(2) : (value * 100).toFixed(0) + '%';
@@ -819,12 +824,13 @@ function appendBentoGrid(data) {
         };
 
         metricsCard.innerHTML = `
-            <div class="metrics-title">📊 RAG Evaluation</div>
+            <div class="metrics-title">📊 Retrieval diagnostics</div>
+            <div class="metrics-detail">Relevance inferred from generated SQL; answer check uses result-value substrings.</div>
             <div class="metrics-bars">
-                ${makeBar('MRR (Mean Reciprocal Rank)', m.mrr, 1.0, [0.8, 0.5])}
-                ${makeBar('Recall@' + m.k, m.recall_at_k, 1.0, [0.8, 0.5])}
-                ${makeBar('Context Relevance', m.context_relevance, 1.0, [0.5, 0.3])}
-                ${makeBar('Faithfulness', m.faithfulness_score, 1.0, [0.8, 0.5])}
+                ${makeBar('Reciprocal rank proxy', m.reciprocal_rank ?? m.mrr, 1.0, [0.8, 0.5])}
+                ${makeBar('Table recall proxy @' + m.k, m.recall_at_k, 1.0, [0.8, 0.5])}
+                ${makeBar('Table usage ratio', m.context_relevance, 1.0, [0.5, 0.3])}
+                ${makeBar('Result-value coverage', m.faithfulness_score, 1.0, [0.8, 0.5])}
             </div>
             <div class="metrics-detail">
                 <span class="metric-detail-label">Retrieved:</span> ${m.retrieved_tables ? m.retrieved_tables.join(', ') : '-'}
